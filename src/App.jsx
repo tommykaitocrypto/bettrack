@@ -319,7 +319,7 @@ async function analyzeScreenshot(base64, mimeType) {
   const r = await fetch(API_ENDPOINT, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514", max_tokens: 1400,
+      model: "claude-haiku-4-5-20251001", max_tokens: 1400,
       system: `Tu extrais les données d'UN SEUL pari depuis une capture d'écran Winamax/Betclic.
 
 ━━━ RÈGLE 1 — QUEL PARI CHOISIR ━━━
@@ -434,7 +434,7 @@ async function detectCompetition(team1, team2, date) {
   const r = await fetch(API_ENDPOINT, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514", max_tokens: 400,
+      model: "claude-haiku-4-5-20251001", max_tokens: 400,
       system: `Tu es un expert en football et sports. Tu identifies la compétition d'un match à partir des équipes et de la date. Utilise la recherche web pour vérifier les informations à jour.
 Réponds UNIQUEMENT avec un JSON valide sans backticks: {"competition":"nom exact officiel","type":"championnat|coupe_nationale|ligue_champions|europa_league|conference_league|amical|autre","confidence":"high|medium|low","source":"web|knowledge"}`,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
