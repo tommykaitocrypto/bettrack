@@ -303,8 +303,11 @@ function getPlayerStats(bets) {
 
 
 // ─── API ─────────────────────────────────────────────────────────────────────
+// Proxy via Vercel serverless function (avoids CORS)
+const API_ENDPOINT = "/api/claude";
+
 async function callClaude(system, userMsg, maxTokens = 1000) {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetch(API_ENDPOINT, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: maxTokens, system, messages: [{ role: "user", content: userMsg }] })
   });
@@ -313,7 +316,7 @@ async function callClaude(system, userMsg, maxTokens = 1000) {
 }
 
 async function analyzeScreenshot(base64, mimeType) {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetch(API_ENDPOINT, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514", max_tokens: 1400,
@@ -428,8 +431,7 @@ function extractJSON(text) {
 }
 
 async function detectCompetition(team1, team2, date) {
-  // Use web search to get accurate, up-to-date competition info
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetch(API_ENDPOINT, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514", max_tokens: 400,
