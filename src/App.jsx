@@ -457,6 +457,10 @@ Si une sélection affiche "Non" : inclus-le dans selection_type ET mets negated:
 - "player" : format "I.Nom" (ex: "Bradley Barcola" → "B.Barcola")
 - "player_display" : nom complet tel qu'il apparaît
 
+━━━ RÈGLE 6 — COTE MYMATCH ━━━
+Pour les paris MyMatch : le badge numérique bleu (ex: 10, 42, 67) est le NUMÉRO DE SÉLECTION MyMatch, PAS la cote.
+La cote totale est le multiplicateur flottant (ex: 3.50, 10.25). Si elle n'est pas visible, mets null.
+
 ━━━ FORMAT JSON ━━━
 JSON valide sans backticks :
 {
@@ -570,7 +574,8 @@ async function runAIAnalysis(bets) {
 }
 
 // ─── BET DETAIL MODAL ────────────────────────────────────────────────────────
-function BetDetailModal({ bet, onClose }) {
+function BetDetailModal({ bet, onClose, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const profit = betProfit(bet);
   const isCombo = bet.bet_structure === "combiné" || bet.bet_structure === "mymatch";
   const tagColor = bet.tag === "SAFE" ? "var(--safe)" : bet.tag === "FUN" ? "var(--fun)" : "var(--accent2)";
@@ -632,6 +637,23 @@ function BetDetailModal({ bet, onClose }) {
             <div style={{display:'flex',alignItems:'center',gap:8,paddingTop:12,borderTop:'1px solid var(--border)',marginTop:4}}>
               <span style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600}}>Réf. bookmaker</span>
               <span style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text3)'}}>{bet.bet_ref}</span>
+            </div>
+          )}
+          {onDelete && (
+            <div style={{marginTop:16,paddingTop:14,borderTop:'1px solid var(--border)'}}>
+              {!confirmDelete ? (
+                <button onClick={()=>setConfirmDelete(true)} style={{width:'100%',padding:'11px',background:'rgba(255,87,112,0.08)',border:'1px solid rgba(255,87,112,0.25)',borderRadius:'var(--radius-sm)',color:'var(--loss)',fontSize:13,fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer',letterSpacing:'0.3px'}}>
+                  🗑 Supprimer ce pari
+                </button>
+              ) : (
+                <div style={{background:'rgba(255,87,112,0.1)',border:'1px solid rgba(255,87,112,0.3)',borderRadius:'var(--radius-sm)',padding:'12px'}}>
+                  <div style={{fontSize:13,color:'var(--text)',textAlign:'center',marginBottom:10,fontWeight:500}}>Supprimer définitivement ce pari ?</div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={()=>setConfirmDelete(false)} style={{flex:1,padding:'9px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text2)',fontSize:13,fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}>Annuler</button>
+                    <button onClick={()=>onDelete(bet.id)} style={{flex:1,padding:'9px',background:'var(--loss)',border:'none',borderRadius:8,color:'#0a0a0f',fontSize:13,fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer'}}>Confirmer</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -875,7 +897,7 @@ function UploadTab({ setBets, addBet, bets }) {
 }
 
 // ─── BETS TAB ────────────────────────────────────────────────────────────────
-function BetsTab({ bets }) {
+function BetsTab({ bets, onDelete }) {
   const [selected, setSelected] = useState(null);
   const [filterResult, setFilterResult] = useState("Tous");
   const [filterTag, setFilterTag] = useState("Tous");
@@ -896,7 +918,7 @@ function BetsTab({ bets }) {
     if (filterDate === "Plage" && dateFrom && new Date(b.date) < new Date(dateFrom)) return false;
     if (filterDate === "Plage" && dateTo && new Date(b.date) > new Date(dateTo)) return false;
     return true;
-  });
+  }).sort((a,b) => new Date(a.date) - new Date(b.date));
 
   return (
     <div>
@@ -961,7 +983,7 @@ function BetsTab({ bets }) {
           );
         })
       }
-      {selected && <BetDetailModal bet={selected} onClose={()=>setSelected(null)} />}
+      {selected && <BetDetailModal bet={selected} onClose={()=>setSelected(null)} onDelete={onDelete ? (id)=>{ onDelete(id); setSelected(null); } : null} />}
     </div>
   );
 }
@@ -984,11 +1006,10 @@ function BarChart({ data, colorFn }) {
   );
 }
 
-function WeeklyBarChart({ bets }) {
-  const [mode, setMode] = useState("month");
+function MonthlyBarChart({ bets }) {
   const grouped = {};
   bets.forEach(b => {
-    const k = mode === "week" ? weekKey(b.date) : monthKey(b.date);
+    const k = monthKey(b.date);
     if (!grouped[k]) grouped[k] = [];
     grouped[k].push(b);
   });
@@ -999,27 +1020,201 @@ function WeeklyBarChart({ bets }) {
   });
   if (data.length < 2) return <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'12px 0'}}>Pas assez de données</div>;
   const maxAbs = Math.max(...data.map(d=>Math.abs(d.value)), 0.01);
-  const barW = Math.min(32, Math.floor(300 / data.length) - 4);
+  const barW = Math.min(40, Math.floor(300 / data.length) - 4);
+  return (
+    <div style={{display:'flex',alignItems:'flex-end',gap:3,height:80,paddingBottom:4}}>
+      {data.map((d,i)=>{
+        const pct = Math.abs(d.value)/maxAbs;
+        const h = Math.max(pct*68, 4);
+        return (
+          <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+            <div style={{width:'100%',height:68,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+              <div style={{width:'100%',maxWidth:barW,height:h,borderRadius:'3px 3px 0 0',background:d.value>=0?'var(--win)':'var(--loss)',opacity:0.85,minHeight:4}} title={`${d.label}: ${fmtEuro(d.value)}`}/>
+            </div>
+            <div style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--font-head)',fontWeight:700,letterSpacing:'0.3px',maxWidth:barW,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'}}>{d.label}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── PIE CHART — répartition paris par catégorie ─────────────────────────────
+function CategoryPieChart({ bets }) {
+  const COLORS = ['var(--accent)','var(--accent2)','var(--win)','var(--fun)','var(--scorer)','#ff9957','#a78bfa','#f472b6'];
+  const allTags = [...new Set(bets.map(b=>b.tag).filter(Boolean))];
+  if (allTags.length === 0) return <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'12px 0'}}>Aucune catégorie</div>;
+
+  const data = allTags.map((t,i) => ({
+    label: t,
+    count: bets.filter(b=>b.tag===t).length,
+    color: COLORS[i % COLORS.length]
+  })).sort((a,b)=>b.count-a.count);
+
+  const total = data.reduce((a,d)=>a+d.count, 0);
+  if (total === 0) return null;
+
+  // SVG pie
+  const R = 60, cx = 75, cy = 70, size = 150;
+  let cumAngle = -Math.PI/2;
+  const slices = data.map(d => {
+    const angle = (d.count / total) * 2 * Math.PI;
+    const start = cumAngle;
+    cumAngle += angle;
+    const x1 = cx + R * Math.cos(start), y1 = cy + R * Math.sin(start);
+    const x2 = cx + R * Math.cos(cumAngle), y2 = cy + R * Math.sin(cumAngle);
+    const large = angle > Math.PI ? 1 : 0;
+    return { ...d, path: `M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R},0,${large},1,${x2.toFixed(2)},${y2.toFixed(2)} Z`, angle, midAngle: start + angle/2 };
+  });
+
+  return (
+    <div style={{display:'flex',alignItems:'center',gap:12}}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{flexShrink:0}}>
+        {slices.map((s,i) => <path key={i} d={s.path} fill={s.color} opacity={0.85}/>)}
+        <circle cx={cx} cy={cy} r={R*0.5} fill="var(--surface)"/>
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="var(--text)" fontSize="13" fontFamily="var(--font-head)" fontWeight="800">{total}</text>
+        <text x={cx} y={cy+14} textAnchor="middle" fill="var(--text3)" fontSize="8" fontFamily="var(--font-head)">paris</text>
+      </svg>
+      <div style={{flex:1}}>
+        {data.map((d,i) => (
+          <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:7}}>
+            <div style={{width:10,height:10,borderRadius:3,background:d.color,flexShrink:0}}/>
+            <div style={{flex:1,fontSize:12,fontFamily:'var(--font-head)',fontWeight:700,color:'var(--text)'}}>{d.label}</div>
+            <div style={{fontSize:12,color:'var(--text2)',fontFamily:'var(--font-head)',fontWeight:700}}>{d.count}</div>
+            <div style={{fontSize:11,color:'var(--text3)',minWidth:32,textAlign:'right'}}>{fmt(d.count/total*100,0)}%</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── BANKROLL CHART ───────────────────────────────────────────────────────────
+function BankrollChart({ bets }) {
+  const [bankrollInput, setBankrollInput] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [tempVal, setTempVal] = useState("");
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const svgRef = useRef(null);
+  const startCapital = parseFloat(bankrollInput) || 0;
+
+  if (bets.length < 2) return (
+    <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'12px 0'}}>Pas assez de données</div>
+  );
+
+  const sorted = [...bets].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let running = startCapital;
+  const points = [{ label: "Début", v: startCapital }];
+  sorted.forEach(b => { running += betProfit(b); points.push({ label: b.date.slice(5), v: running }); });
+
+  const values = points.map(p=>p.v);
+  const mn = Math.min(...values), mx = Math.max(...values);
+  const range = Math.max(mx - mn, 0.01);
+  const W = 340, H = 100;
+  const px = i => (i / (points.length - 1)) * (W - 4) + 2;
+  const py = v => H - ((v - mn) / range) * (H - 16) - 2;
+  const d = points.map((p,i) => `${i===0?'M':'L'}${px(i).toFixed(1)},${py(p.v).toFixed(1)}`).join(' ');
+  const fill = d + ` L${px(points.length-1).toFixed(1)},${H} L${px(0).toFixed(1)},${H} Z`;
+  const last = values[values.length-1];
+  const color = last >= startCapital ? '#57ff9e' : '#ff5770';
+  const zeroY = py(startCapital);
+  const maxIdx = values.indexOf(mx), minIdx = values.indexOf(mn);
+  const labelIdxs = [...new Set([0, maxIdx, minIdx, points.length-1])].sort((a,b)=>a-b);
+
+  const getIdxFromX = (clientX) => {
+    if (!svgRef.current) return null;
+    const rect = svgRef.current.getBoundingClientRect();
+    const relX = clientX - rect.left;
+    const frac = (relX - 2) / (rect.width - 4);
+    const idx = Math.round(frac * (points.length - 1));
+    return Math.max(0, Math.min(points.length - 1, idx));
+  };
+
+  const handlePointerMove = (e) => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    setHoverIdx(getIdxFromX(clientX));
+  };
+
+  const hoverPt = hoverIdx !== null ? points[hoverIdx] : null;
+  const hoverX = hoverIdx !== null ? px(hoverIdx) : null;
+  const hoverY = hoverPt ? py(hoverPt.v) : null;
+
   return (
     <div>
-      <div className="tab-switch" style={{marginBottom:10}}>
-        <button className={`tab-switch-btn ${mode==='month'?'active':''}`} onClick={()=>setMode('month')}>Par mois</button>
-        <button className={`tab-switch-btn ${mode==='week'?'active':''}`} onClick={()=>setMode('week')}>Par semaine</button>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <span style={{fontSize:11,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600}}>Capital de départ</span>
+        {editing ? (
+          <div style={{display:'flex',gap:6,alignItems:'center',flex:1}}>
+            <input style={{flex:1,background:'var(--surface2)',border:'1px solid var(--accent)',borderRadius:8,padding:'4px 10px',color:'var(--text)',fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,outline:'none'}}
+              value={tempVal} onChange={e=>setTempVal(e.target.value)} type="number" placeholder="0" autoFocus
+              onKeyDown={e=>{ if(e.key==="Enter"){setBankrollInput(tempVal);setEditing(false);} if(e.key==="Escape")setEditing(false); }}/>
+            <span style={{fontSize:13,color:'var(--text2)'}}>€</span>
+            <button onClick={()=>{setBankrollInput(tempVal);setEditing(false);}} style={{background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:6,padding:'4px 10px',fontFamily:'var(--font-head)',fontSize:12,fontWeight:800,cursor:'pointer'}}>OK</button>
+          </div>
+        ) : (
+          <button onClick={()=>{setTempVal(bankrollInput);setEditing(true);}} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 12px',color:bankrollInput?'var(--accent)':'var(--text3)',fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            {bankrollInput ? `${bankrollInput}€` : "Définir →"}
+          </button>
+        )}
+        <span style={{marginLeft:'auto',fontFamily:'var(--font-head)',fontSize:16,fontWeight:800,color:last>=startCapital?'var(--win)':'var(--loss)'}}>
+          {hoverPt ? <>{hoverPt.v>=0?'+':''}{fmt(hoverPt.v,0)}€ <span style={{fontSize:11,color:'var(--text3)',fontWeight:500}}>{hoverPt.label}</span></> : <>{last-startCapital>=0?'+':''}{fmt(last-startCapital,0)}€</>}
+        </span>
       </div>
-      <div style={{display:'flex',alignItems:'flex-end',gap:3,height:80,paddingBottom:4}}>
-        {data.map((d,i)=>{
-          const pct = Math.abs(d.value)/maxAbs;
-          const h = Math.max(pct*68, 4);
-          return (
-            <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
-              <div style={{width:'100%',height:68,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
-                <div style={{width:'100%',maxWidth:barW,height:h,borderRadius:'3px 3px 0 0',background:d.value>=0?'var(--win)':'var(--loss)',opacity:0.85,minHeight:4}} title={`${d.label}: ${fmtEuro(d.value)}`}/>
-              </div>
-              <div style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--font-head)',fontWeight:700,letterSpacing:'0.3px',maxWidth:barW,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'}}>{d.label}</div>
-            </div>
-          );
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" height="110"
+        style={{display:'block',overflow:'visible',cursor:'crosshair',touchAction:'pan-y'}}
+        onMouseMove={handlePointerMove} onTouchMove={handlePointerMove}
+        onMouseLeave={()=>setHoverIdx(null)} onTouchEnd={()=>setHoverIdx(null)}>
+        <defs><linearGradient id="brGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.25"/><stop offset="100%" stopColor={color} stopOpacity="0.02"/></linearGradient></defs>
+        {zeroY>=0&&zeroY<=H&&<line x1={0} y1={zeroY.toFixed(1)} x2={W} y2={zeroY.toFixed(1)} stroke="var(--border)" strokeWidth="1" strokeDasharray="4,4"/>}
+        <path d={fill} fill="url(#brGrad)"/>
+        <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        {/* Static endpoint dot */}
+        {hoverIdx === null && <circle cx={px(points.length-1).toFixed(1)} cy={py(last).toFixed(1)} r="5" fill={color}/>}
+        {/* Static labels (hidden when hovering) */}
+        {hoverIdx === null && labelIdxs.map(i => {
+          const p=points[i]; const x=px(i); const y=py(p.v); const above=y>20;
+          return <g key={i}>
+            <circle cx={x.toFixed(1)} cy={y.toFixed(1)} r="3" fill={p.v>=startCapital?'var(--win)':'var(--loss)'} opacity="0.7"/>
+            <text x={Math.min(Math.max(x,16),W-16).toFixed(1)} y={above?(y-7).toFixed(1):(y+13).toFixed(1)} textAnchor="middle" fill="var(--text3)" fontSize="8" fontFamily="var(--font-head)" fontWeight="700">
+              {p.v>=0?'+':''}{fmt(p.v,0)}€
+            </text>
+          </g>;
         })}
+        {/* Hover indicator */}
+        {hoverPt && hoverX !== null && hoverY !== null && <>
+          <line x1={hoverX.toFixed(1)} y1={0} x2={hoverX.toFixed(1)} y2={H} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3,3"/>
+          <circle cx={hoverX.toFixed(1)} cy={hoverY.toFixed(1)} r="6" fill={color} stroke="var(--bg)" strokeWidth="2"/>
+        </>}
+      </svg>
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:6}}>
+        <div style={{fontSize:10,color:'var(--text3)'}}>Max : <span style={{color:'var(--win)',fontFamily:'var(--font-head)',fontWeight:700}}>{fmt(mx,0)}€</span></div>
+        <div style={{fontSize:10,color:'var(--text3)'}}>Min : <span style={{color:'var(--loss)',fontFamily:'var(--font-head)',fontWeight:700}}>{fmt(mn,0)}€</span></div>
+        <div style={{fontSize:10,color:'var(--text3)'}}>{sorted.length} paris</div>
       </div>
+    </div>
+  );
+}
+
+// ─── SPORT HEATMAP ────────────────────────────────────────────────────────────
+function SportHeatmap({ bets }) {
+  const sports = [...new Set(bets.map(b=>b.sport).filter(Boolean))];
+  if (sports.length === 0) return null;
+  const rows = sports.map(sp => {
+    const sub=bets.filter(b=>b.sport===sp); const st=computeStats(sub);
+    return { sport:sp, count:sub.length, profit:st.profit, rate:st.rate };
+  }).sort((a,b)=>b.profit-a.profit);
+  const sportEmoji = {Football:'⚽',Tennis:'🎾',Basketball:'🏀',Rugby:'🏉',Hockey:'🏒'};
+  return (
+    <div>
+      {rows.map((r,i)=>(
+        <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:i<rows.length-1?'1px solid var(--border)':'none'}}>
+          <div style={{fontSize:18,flexShrink:0}}>{sportEmoji[r.sport]||'🎯'}</div>
+          <div style={{flex:1,fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,color:'var(--text)'}}>{r.sport}</div>
+          <div style={{fontSize:12,color:'var(--text3)',minWidth:40,textAlign:'center'}}>{r.count} paris</div>
+          <div style={{fontSize:12,fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)',minWidth:36,textAlign:'center'}}>{fmt(r.rate,0)}%</div>
+          <div style={{fontFamily:'var(--font-head)',fontSize:14,fontWeight:800,color:r.profit>=0?'var(--win)':'var(--loss)',minWidth:60,textAlign:'right'}}>{fmtEuro(r.profit)}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1031,126 +1226,6 @@ function DonutChart({ segments, size=80 }) {
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{transform:'rotate(-90deg)',flexShrink:0}}>
       {segments.map((seg,i)=>{ const pct=total>0?seg.value/total:0, dash=pct*circ, gap=circ-dash; const el=<circle key={i} r={r} cx={cx} cy={cy} fill="none" stroke={seg.color} strokeWidth={12} strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset*circ}/>; offset+=pct; return el; })}
     </svg>
-  );
-}
-
-// ─── BANKROLL CHART ───────────────────────────────────────────────────────────
-function BankrollChart({ bets }) {
-  const [startCapital, setStartCapital] = useState("");
-  const start = parseFloat(startCapital) || 0;
-
-  const sorted = [...bets].sort((a,b) => new Date(a.date) - new Date(b.date));
-  if (sorted.length < 2) return (
-    <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'12px 0'}}>Pas assez de données (min. 2 paris)</div>
-  );
-
-  // Build points: one per day with bets, cumulative
-  const byDay = {};
-  sorted.forEach(b => {
-    if (!byDay[b.date]) byDay[b.date] = 0;
-    byDay[b.date] += betProfit(b);
-  });
-  const days = Object.keys(byDay).sort();
-  let running = start;
-  const pts = [{ d: "Départ", v: start }];
-  days.forEach(d => { running += byDay[d]; pts.push({ d: d.slice(5), v: running }); });
-
-  const W = 340, H = 110;
-  const vals = pts.map(p=>p.v);
-  const mn = Math.min(...vals), mx = Math.max(...vals);
-  const range = mx - mn || 1;
-  const px = i => (i / (pts.length - 1)) * (W - 8) + 4;
-  const py = v => H - 16 - ((v - mn) / range) * (H - 32);
-  const last = pts[pts.length - 1].v;
-  const color = last >= start ? '#57ff9e' : '#ff5770';
-  const zeroY = py(start > 0 ? start : 0);
-  const path = pts.map((p,i) => `${i===0?'M':'L'}${px(i)},${py(p.v)}`).join(' ');
-  const area = path + ` L${px(pts.length-1)},${H-4} L${px(0)},${H-4} Z`;
-
-  return (
-    <div>
-      <div className="bankroll-input-row">
-        <span style={{fontSize:12,color:'var(--text2)'}}>Capital de départ :</span>
-        <input
-          className="bankroll-input"
-          type="number"
-          placeholder="0€"
-          value={startCapital}
-          onChange={e=>setStartCapital(e.target.value)}
-        />
-        <span style={{fontSize:12,color:'var(--text3)'}}>€</span>
-        <span style={{marginLeft:'auto',fontFamily:'var(--font-head)',fontSize:14,fontWeight:800,color:last>=start?'var(--win)':'var(--loss)'}}>
-          {last >= 0 ? '+':''}{fmt(last - start)}€
-        </span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{display:'block',overflow:'visible'}}>
-        <defs>
-          <linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
-            <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
-          </linearGradient>
-        </defs>
-        {/* zero/start line */}
-        <line x1={4} y1={zeroY} x2={W-4} y2={zeroY} stroke="var(--border2)" strokeWidth="1" strokeDasharray="4,3"/>
-        {/* area fill */}
-        <path d={area} fill="url(#bkg)"/>
-        {/* line */}
-        <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-        {/* last point dot */}
-        <circle cx={px(pts.length-1)} cy={py(last)} r="5" fill={color}/>
-        {/* first label */}
-        <text x={4} y={H} fontSize="9" fill="var(--text3)" fontFamily="var(--font-head)">{pts[0].d}</text>
-        {/* last label */}
-        <text x={W-4} y={H} fontSize="9" fill="var(--text3)" fontFamily="var(--font-head)" textAnchor="end">{pts[pts.length-1].d}</text>
-        {/* current value label */}
-        <text x={px(pts.length-1)-6} y={py(last)-8} fontSize="10" fill={color} fontFamily="var(--font-head)" fontWeight="800" textAnchor="end">{fmt(last)}€</text>
-      </svg>
-    </div>
-  );
-}
-
-// ─── SPORT HEATMAP ────────────────────────────────────────────────────────────
-function SportHeatmap({ bets }) {
-  const sports = [...new Set(bets.map(b=>b.sport).filter(Boolean))];
-  const data = sports.map(sp => {
-    const sub = bets.filter(b=>b.sport===sp);
-    const st = computeStats(sub);
-    return { sport:sp, count:sub.length, avgOdd:st.avgOdd, profit:st.profit, rate:st.rate };
-  }).sort((a,b) => b.profit - a.profit);
-
-  if (data.length === 0) return null;
-
-  const maxAbs = Math.max(...data.map(d=>Math.abs(d.profit)), 0.01);
-  const sportEmoji = { Football:"⚽", Tennis:"🎾", Basketball:"🏀", Rugby:"🏉", Hockey:"🏒", Baseball:"⚾" };
-
-  return (
-    <div>
-      {data.map((d,i) => {
-        const pct = (Math.abs(d.profit) / maxAbs) * 100;
-        const isPos = d.profit >= 0;
-        const bg = isPos
-          ? `rgba(87,255,158,${0.08 + (pct/100)*0.22})`
-          : `rgba(255,87,112,${0.08 + (pct/100)*0.22})`;
-        const textColor = isPos ? 'var(--win)' : 'var(--loss)';
-        const border = isPos ? 'rgba(87,255,158,0.2)' : 'rgba(255,87,112,0.18)';
-        return (
-          <div key={d.sport} className="heatmap-row">
-            <div className="heatmap-sport">{sportEmoji[d.sport]||'🎯'} {d.sport}</div>
-            <div className="heatmap-bar-track">
-              <div className="heatmap-bar-fill" style={{width:`${Math.max(pct,8)}%`,background:bg,border:`1px solid ${border}`}}>
-                <span className="heatmap-bar-text" style={{color:textColor}}>
-                  {d.count} paris · ×{fmt(d.avgOdd)} · {fmt(d.rate,0)}%
-                </span>
-              </div>
-            </div>
-            <div className="heatmap-stats">
-              <div className="heatmap-profit" style={{color:textColor}}>{fmtEuro(d.profit)}</div>
-              <div className="heatmap-meta">{d.count} paris</div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
@@ -1216,9 +1291,13 @@ function DashboardTab({ bets }) {
         <BarChart data={tagData.map(d=>({label:d.label,value:d.value}))} />
       </div>
 
-      {/* ── BLOC 3 : Performance dans le temps ── */}
-      <div className="section-title">Performance dans le temps</div>
-      <div className="card" style={{padding:'14px 14px 10px'}}><WeeklyBarChart bets={bets}/></div>
+      {/* ── BLOC 3 : Performance dans le temps (par mois) ── */}
+      <div className="section-title">Performance par mois</div>
+      <div className="card" style={{padding:'14px 14px 10px'}}><MonthlyBarChart bets={bets}/></div>
+
+      {/* ── BLOC 3b : Répartition par catégorie ── */}
+      <div className="section-title">Répartition par catégorie</div>
+      <div className="card" style={{padding:'16px'}}><CategoryPieChart bets={bets}/></div>
 
       {/* ── BLOC 4 : Heatmap par sport ── */}
       {sportData.length > 0 && <>
@@ -1489,6 +1568,13 @@ export default function App() {
   const { user, authReady, login, register, logout } = useAuth();
   const { bets, storageReady, setBets, addBet } = useUserBets(user);
   const [tab, setTab] = useState("upload");
+
+  const deleteBet = async (betId) => {
+    try {
+      await sbDelete("bets", `id=eq.${betId}&username=eq.${encodeURIComponent(user)}`);
+      setBets(prev => prev.filter(b => b.id !== betId));
+    } catch(e) { alert("Erreur lors de la suppression : " + e.message); }
+  };
   if (!authReady) return null;
   if (!user) return <LoginScreen onLogin={login} onRegister={register} />;
   if (!storageReady) return (
@@ -1511,7 +1597,7 @@ export default function App() {
         </div>
         <div className="scroll-area">
           {tab==="upload" && <UploadTab addBet={addBet} setBets={setBets} bets={bets}/>}
-          {tab==="bets" && <BetsTab bets={bets}/>}
+          {tab==="bets" && <BetsTab bets={bets} onDelete={deleteBet}/>}
           {tab==="dashboard" && <DashboardTab bets={bets}/>}
           {tab==="insights" && <InsightsTab bets={bets}/>}
         </div>
