@@ -944,6 +944,7 @@ function UploadTab({ setBets, addBet, bets, updateBet }) {
       setQueue(results);
       setQueueIdx(0);
       loadQueueItem(results, 0);
+      setMode("multi");
     } catch(e) { setError("Erreur d'analyse : " + e.message); }
     setAnalyzing(false);
   };
@@ -1006,6 +1007,15 @@ function UploadTab({ setBets, addBet, bets, updateBet }) {
       <div className="success-title">{savedCount} pari{savedCount>1?"s":""} enregistré{savedCount>1?"s":""}!</div>
       <div className="success-sub">Dashboard et insights mis à jour.</div>
       <button className="btn-primary" style={{marginTop:24,maxWidth:240}} onClick={reset}>Importer d'autres paris</button>
+    </div>
+  );
+
+  // ── Render: ANALYZING ─────────────────────────────────────────────────────────
+  if (analyzing) return (
+    <div style={{textAlign:'center',padding:'60px 0'}}>
+      <div className="spinner" style={{margin:'0 auto 16px',width:48,height:48}}/>
+      <div className="analyzing-text">Analyse de {files.length} capture{files.length>1?"s":""}…</div>
+      <div className="analyzing-sub">Extraction IA des données</div>
     </div>
   );
 
@@ -1118,15 +1128,6 @@ function UploadTab({ setBets, addBet, bets, updateBet }) {
     );
   }
 
-  // ── Render: ANALYZING ─────────────────────────────────────────────────────────
-  if (analyzing) return (
-    <div style={{textAlign:'center',padding:'60px 0'}}>
-      <div className="spinner" style={{margin:'0 auto 16px',width:48,height:48}}/>
-      <div className="analyzing-text">Analyse de {files.length} capture{files.length>1?"s":""}…</div>
-      <div className="analyzing-sub">Extraction IA des données</div>
-    </div>
-  );
-
   // ── Render: IDLE — file selection ─────────────────────────────────────────────
   if (mode === "idle") return (
     <div>
@@ -1138,11 +1139,11 @@ function UploadTab({ setBets, addBet, bets, updateBet }) {
       </div>
 
       {files.length === 0 ? (
-        <div className={`upload-zone`} onClick={()=>fileRef.current?.click()}>
-          <input ref={fileRef} type="file" accept="image/*" multiple onChange={e=>{ addFiles(e.target.files); }} style={{display:'none'}} />
+        <div className="upload-zone">
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={e=>{ if(e.target.files?.length) addFiles(e.target.files); }} />
           <div className="upload-icon">📲</div>
           <div className="upload-title">Importer des captures</div>
-          <div className="upload-sub">Jusqu'à 5 screenshots à la fois</div>
+          <div className="upload-sub">Appuyer pour choisir depuis la galerie · jusqu'à 5</div>
           <div className="bookmaker-badges"><span className="badge badge-winamax">Winamax</span><span className="badge badge-betclic">Betclic</span></div>
         </div>
       ) : (
@@ -1157,8 +1158,8 @@ function UploadTab({ setBets, addBet, bets, updateBet }) {
             ))}
             {files.length < 5 && (
               <div className="add-more-zone">
-                <input type="file" accept="image/*" multiple onChange={e=>addFiles(e.target.files)} />
-                <span>+</span>
+                <input type="file" accept="image/*" multiple onChange={e=>{ if(e.target.files?.length) addFiles(e.target.files); }} />
+                <span style={{fontSize:24}}>+</span>
                 <span style={{fontSize:10,color:'var(--text3)'}}>Ajouter</span>
               </div>
             )}
