@@ -638,6 +638,8 @@ async function analyzeMultipleScreenshots(files) {
   }
   return merged;
 }
+
+function extractJSON(text) {
   let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   try { return JSON.parse(s); } catch {}
   const start = s.indexOf("{");
