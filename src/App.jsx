@@ -62,35 +62,30 @@ const CSS = `
   .selection-type { font-size: 11px; color: var(--text2); margin-top: 2px; }
   .selection-odd { font-family: var(--font-head); font-size: 16px; font-weight: 700; color: var(--accent); margin-left: 12px; flex-shrink: 0; }
   .scorer-tag { background: rgba(212,170,255,0.15); color: var(--scorer); border: 1px solid rgba(212,170,255,0.3); border-radius: 6px; font-size: 10px; font-weight: 700; padding: 2px 6px; font-family: var(--font-head); letter-spacing: 0.3px; white-space: nowrap; }
-  .tag-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-  .tag-btn { padding: 12px; border-radius: var(--radius-sm); border: 2px solid var(--border); background: var(--surface2); cursor: pointer; text-align: center; transition: all 0.2s; font-family: var(--font-head); font-size: 14px; font-weight: 700; color: var(--text2); }
-  .tag-btn.safe.selected { border-color: var(--safe); background: rgba(200,255,87,0.1); color: var(--safe); }
-  .tag-btn.fun.selected { border-color: var(--fun); background: rgba(255,153,87,0.1); color: var(--fun); }
-  .tag-emoji { font-size: 20px; margin-bottom: 4px; }
+  .freebet-tag { background: rgba(87,200,255,0.15); color: var(--accent2); border: 1px solid rgba(87,200,255,0.3); border-radius: 6px; font-size: 10px; font-weight: 700; padding: 2px 7px; font-family: var(--font-head); letter-spacing: 0.3px; white-space: nowrap; }
+  /* Tag selector — supports custom tags */
+  .tag-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .tag-btn { padding: 10px 16px; border-radius: var(--radius-sm); border: 2px solid var(--border); background: var(--surface2); cursor: pointer; text-align: center; transition: all 0.2s; font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--text2); }
+  .tag-btn.selected { border-color: var(--accent); background: rgba(200,255,87,0.1); color: var(--accent); }
   .btn-primary { width: 100%; padding: 16px; background: var(--accent); color: #0a0a0f; border: none; border-radius: var(--radius); font-family: var(--font-head); font-size: 15px; font-weight: 800; cursor: pointer; letter-spacing: 0.5px; transition: all 0.2s; }
   .btn-primary:hover { background: #d8ff70; transform: translateY(-1px); }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   .btn-secondary { width: 100%; padding: 14px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--font-head); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
   .btn-secondary:hover { border-color: var(--text2); color: var(--text); }
-  .bet-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
-  .bet-card:hover { border-color: var(--border2); transform: translateY(-1px); }
-  .bet-card:active { transform: scale(0.985); }
-  .bet-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
-  .bet-match { font-family: var(--font-head); font-size: 14px; font-weight: 700; line-height: 1.3; }
-  .bet-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-  .meta-chip { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
-  .chip-sport { background: rgba(87,200,255,0.1); color: var(--accent2); border: 1px solid rgba(87,200,255,0.2); }
-  .chip-struct { background: rgba(200,255,87,0.1); color: var(--accent); border: 1px solid rgba(200,255,87,0.2); }
-  .chip-safe { background: rgba(200,255,87,0.1); color: var(--safe); border: 1px solid rgba(200,255,87,0.2); }
-  .chip-fun { background: rgba(255,153,87,0.1); color: var(--fun); border: 1px solid rgba(255,153,87,0.2); }
-  .chip-scorer { background: rgba(212,170,255,0.1); color: var(--scorer); border: 1px solid rgba(212,170,255,0.2); }
-  .bet-card-bottom { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
-  .bet-stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .bet-stat-value { font-family: var(--font-head); font-size: 15px; font-weight: 700; }
-  .filter-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; scrollbar-width: none; }
-  .filter-scroll::-webkit-scrollbar { display: none; }
-  .filter-chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-family: var(--font-head); transition: all 0.2s; flex-shrink: 0; }
-  .filter-chip.active { border-color: var(--accent); background: rgba(200,255,87,0.12); color: var(--accent); }
+  /* ── COMPACT BET CARD (new design) ── */
+  .bet-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s, transform 0.12s; display: flex; align-items: center; gap: 12px; }
+  .bet-row:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .bet-row:active { transform: scale(0.985); }
+  .bet-row-left { flex: 1; min-width: 0; }
+  .bet-row-type { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+  .bet-row-meta { font-size: 11px; color: var(--text3); }
+  .bet-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .bet-row-odd { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--accent); }
+  .bet-row-gain { font-family: var(--font-head); font-size: 14px; font-weight: 800; }
+  .bet-row-result { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+  .bet-row-result.win { background: rgba(87,255,158,0.15); }
+  .bet-row-result.loss { background: rgba(255,87,112,0.12); }
+  /* ── modal ── */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; display: flex; align-items: flex-end; animation: fadeIn 0.2s; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   .modal-sheet { background: var(--surface); border-radius: 24px 24px 0 0; width: 100%; max-width: 430px; margin: 0 auto; max-height: 90vh; overflow-y: auto; padding-bottom: 40px; animation: slideUp 0.3s cubic-bezier(0.16,1,0.3,1); scrollbar-width: none; position: relative; }
@@ -114,6 +109,7 @@ const CSS = `
   .sel-team { font-family: var(--font-head); font-size: 14px; font-weight: 700; margin-bottom: 3px; }
   .sel-type { font-size: 12px; color: var(--text2); }
   .sel-odd-big { font-family: var(--font-head); font-size: 22px; font-weight: 800; color: var(--accent); flex-shrink: 0; margin-left: 8px; }
+  /* ── stats ── */
   .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
   .stat-card.full { grid-column: 1 / -1; }
@@ -128,7 +124,7 @@ const CSS = `
   .bar-label { font-size: 12px; color: var(--text2); width: 80px; flex-shrink: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bar-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
   .bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
-  .bar-val { font-family: var(--font-head); font-size: 12px; font-weight: 700; width: 44px; text-align: right; flex-shrink: 0; }
+  .bar-val { font-family: var(--font-head); font-size: 12px; font-weight: 700; width: 52px; text-align: right; flex-shrink: 0; }
   .player-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface2); border-radius: var(--radius-sm); margin-bottom: 6px; }
   .player-rank { font-family: var(--font-head); font-size: 16px; font-weight: 800; width: 24px; flex-shrink: 0; }
   .player-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--border2); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
@@ -140,7 +136,7 @@ const CSS = `
   .tab-switch-btn { flex: 1; padding: 8px; border: none; border-radius: 8px; background: transparent; color: var(--text2); font-family: var(--font-head); font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
   .tab-switch-btn.active { background: var(--surface); color: var(--text); }
   .donut-wrap { display: flex; align-items: center; gap: 16px; }
-  .donut-legend { display: flex; flex-direction: column; gap: 8px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .insight-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start; }
@@ -198,13 +194,52 @@ const CSS = `
   .login-input:focus { border-color: var(--accent); }
   .login-input::placeholder { color: var(--text3); }
   .login-error { background: rgba(255,87,112,0.1); border: 1px solid rgba(255,87,112,0.3); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--loss); margin-bottom: 10px; }
-  .login-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
-  .login-divider-line { flex: 1; height: 1px; background: var(--border); }
-  .login-divider-text { font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
   .login-toggle { text-align: center; font-size: 13px; color: var(--text2); margin-top: 4px; }
   .login-toggle button { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; padding: 0 4px; font-family: var(--font-body); }
   .invite-info { background: rgba(200,255,87,0.06); border: 1px solid rgba(200,255,87,0.15); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
   .invite-info strong { color: var(--accent); font-family: var(--font-head); }
+  /* streak cards */
+  .streak-row { display: flex; gap: 8px; margin-bottom: 6px; }
+  .streak-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; font-family: var(--font-head); flex-shrink: 0; }
+  .streak-dot.win { background: rgba(87,255,158,0.2); color: var(--win); }
+  .streak-dot.loss { background: rgba(255,87,112,0.15); color: var(--loss); }
+  /* date filter pills */
+  .date-filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; scrollbar-width: none; }
+  .date-filter-row::-webkit-scrollbar { display: none; }
+  .date-pill { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-family: var(--font-head); transition: all 0.15s; flex-shrink: 0; }
+  .date-pill.active { border-color: var(--accent2); background: rgba(87,200,255,0.1); color: var(--accent2); }
+  /* freebet checkbox */
+  .freebet-toggle { display: flex; align-items: center; gap: 10px; background: rgba(87,200,255,0.06); border: 1px solid rgba(87,200,255,0.2); border-radius: var(--radius-sm); padding: 12px 14px; cursor: pointer; margin-bottom: 14px; user-select: none; }
+  .freebet-toggle input { display: none; }
+  .freebet-box { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--border2); background: var(--surface2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  .freebet-box.checked { border-color: var(--accent2); background: var(--accent2); }
+  .freebet-toggle-label { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--text2); }
+  .freebet-toggle.active .freebet-toggle-label { color: var(--accent2); }
+  /* filter-chip (bets tab) */
+  .filter-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; scrollbar-width: none; }
+  .filter-scroll::-webkit-scrollbar { display: none; }
+  .filter-chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-family: var(--font-head); transition: all 0.2s; flex-shrink: 0; }
+  .filter-chip.active { border-color: var(--accent); background: rgba(200,255,87,0.12); color: var(--accent); }
+  /* data table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th { font-family: var(--font-head); font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text2); vertical-align: middle; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table .num { font-family: var(--font-head); font-weight: 700; color: var(--text); }
+  /* bankroll */
+  .bankroll-input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .bankroll-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; color: var(--text); font-family: var(--font-head); font-size: 13px; font-weight: 700; width: 90px; outline: none; text-align: center; }
+  .bankroll-input:focus { border-color: var(--accent); }
+  /* heatmap sport */
+  .heatmap-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .heatmap-row:last-child { border-bottom: none; }
+  .heatmap-sport { font-family: var(--font-head); font-size: 13px; font-weight: 700; width: 80px; flex-shrink: 0; }
+  .heatmap-bar-track { flex: 1; height: 28px; background: var(--surface2); border-radius: 6px; overflow: hidden; position: relative; }
+  .heatmap-bar-fill { height: 100%; border-radius: 6px; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); display: flex; align-items: center; padding: 0 10px; }
+  .heatmap-bar-text { font-family: var(--font-head); font-size: 11px; font-weight: 800; white-space: nowrap; }
+  .heatmap-stats { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; width: 56px; }
+  .heatmap-profit { font-family: var(--font-head); font-size: 13px; font-weight: 800; }
+  .heatmap-meta { font-size: 10px; color: var(--text3); margin-top: 1px; }
 `;
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
@@ -212,7 +247,6 @@ const SUPABASE_URL = "https://tpebejuthrbkbjwbdjqz.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwZWJlanV0aHJia2Jqd2JkanF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMDM4MjEsImV4cCI6MjA4ODY3OTgyMX0.oysT_KLsQhjJmdKSWAwKgqgU0p66Hz0WNNn-1sN19Tk";
 const INVITE_CODE = "BETTRACK2026";
 
-// Supabase REST helpers
 const sbHeaders = { "Content-Type": "application/json", "apikey": SUPABASE_ANON, "Authorization": `Bearer ${SUPABASE_ANON}` };
 
 async function sbGet(table, params = "") {
@@ -230,24 +264,36 @@ async function sbDelete(table, params = "") {
   if (!r.ok) throw new Error(await r.text());
 }
 
-const SAMPLE_BETS = [
-  { id: 1, bet_ref: "REF-001", date: "2025-03-08", heure: "21:00", sport: "Football", competition: "Ligue 1", bookmaker: "Winamax", team_1: "Lens", team_2: "Metz", bet_structure: "combiné", bet_category: "goals", total_odd: 1.53, stake: 15, actual_win: 22.95, result: "win", tag: "SAFE", selections: [{ team: "Lens", player: null, selection_type: "double chance", odd: 1.2 }, { team: "Metz", player: null, selection_type: "over/under", odd: 1.28 }] },
-  { id: 2, bet_ref: "REF-002", date: "2025-03-07", heure: "20:45", sport: "Football", competition: "Champions League", bookmaker: "Betclic", team_1: "PSG", team_2: "Real Madrid", bet_structure: "simple", bet_category: "team", total_odd: 2.4, stake: 10, actual_win: 0, result: "loss", tag: "FUN", selections: [{ team: "PSG", player: null, selection_type: "résultat match", odd: 2.4 }] },
-  { id: 3, bet_ref: "REF-003", date: "2025-03-05", heure: "17:00", sport: "Football", competition: "Premier League", bookmaker: "Winamax", team_1: "Arsenal", team_2: "Liverpool", bet_structure: "mymatch", bet_category: "player", total_odd: 3.8, stake: 8, actual_win: 30.4, result: "win", tag: "FUN", selections: [{ team: "Arsenal", player: "B.Saka", player_display: "Bukayo Saka", selection_type: "buteur", odd: 2.5 }, { team: "Liverpool", player: null, selection_type: "over/under", odd: 1.52 }] },
-  { id: 4, bet_ref: "REF-004", date: "2025-03-03", heure: "21:00", sport: "Football", competition: "Ligue 1", bookmaker: "Betclic", team_1: "OM", team_2: "OL", bet_structure: "simple", bet_category: "team", total_odd: 1.75, stake: 20, actual_win: 35, result: "win", tag: "SAFE", selections: [{ team: "OM", player: null, selection_type: "double chance", odd: 1.75 }] },
-  { id: 5, bet_ref: "REF-005", date: "2025-03-01", heure: "15:00", sport: "Tennis", competition: "ATP 500", bookmaker: "Winamax", team_1: "Djokovic", team_2: "Alcaraz", bet_structure: "simple", bet_category: "team", total_odd: 1.6, stake: 25, actual_win: 0, result: "loss", tag: "SAFE", selections: [{ team: "Djokovic", player: null, selection_type: "résultat match", odd: 1.6 }] },
-  { id: 6, bet_ref: "REF-006", date: "2025-02-28", heure: "20:45", sport: "Football", competition: "Ligue 1", bookmaker: "Winamax", team_1: "Monaco", team_2: "Nice", bet_structure: "combiné", bet_category: "player", total_odd: 2.1, stake: 12, actual_win: 25.2, result: "win", tag: "SAFE", selections: [{ team: "Monaco", player: "W.Ben Yedder", player_display: "Wissam Ben Yedder", selection_type: "buteur", odd: 1.5 }, { team: "Monaco", player: null, selection_type: "résultat match", odd: 1.4 }] },
-  { id: 7, bet_ref: "REF-007", date: "2025-02-25", heure: "21:00", sport: "Football", competition: "Ligue 1", bookmaker: "Betclic", team_1: "PSG", team_2: "Monaco", bet_structure: "mymatch", bet_category: "player", total_odd: 4.2, stake: 5, actual_win: 0, result: "loss", tag: "FUN", selections: [{ team: "PSG", player: "K.Mbappé", player_display: "Kylian Mbappé", selection_type: "buteur", odd: 1.8 }, { team: "PSG", player: null, selection_type: "résultat match", odd: 1.5 }, { team: "Monaco", player: "W.Ben Yedder", player_display: "Wissam Ben Yedder", selection_type: "buteur", odd: 2.2 }] },
-  { id: 8, bet_ref: "REF-008", date: "2025-02-22", heure: "17:30", sport: "Football", competition: "Premier League", bookmaker: "Winamax", team_1: "Man City", team_2: "Chelsea", bet_structure: "simple", bet_category: "player", total_odd: 2.8, stake: 10, actual_win: 28, result: "win", tag: "FUN", selections: [{ team: "Man City", player: "E.Haaland", player_display: "Erling Haaland", selection_type: "buteur", odd: 2.8 }] },
-];
+// ─── COMPETITION NORMALISATION MAP ───────────────────────────────────────────
+const COMP_ALIASES = {
+  "UEFA Champions League": "Champions League",
+  "UCL": "Champions League",
+  "Ligue des Champions": "Champions League",
+  "UEFA Europa League": "Europa League",
+  "UEL": "Europa League",
+  "UEFA Conference League": "Conference League",
+  "UECL": "Conference League",
+  "English Premier League": "Premier League",
+  "EPL": "Premier League",
+  "Bundesliga 1": "Bundesliga",
+  "1. Bundesliga": "Bundesliga",
+  "Serie A TIM": "Serie A",
+  "LaLiga": "La Liga",
+  "La Liga Santander": "La Liga",
+  "Ligue 1 Uber Eats": "Ligue 1",
+  "Ligue 1 McDonald's": "Ligue 1",
+  "ATP Masters 1000": "ATP Masters",
+  "WTA 1000": "WTA",
+};
+function normalizeCompetition(raw) {
+  if (!raw) return raw;
+  return COMP_ALIASES[raw] || raw;
+}
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const fmt = (n, d = 2) => (n || 0).toFixed(d);
 const fmtEuro = n => `${n >= 0 ? '+' : ''}${fmt(n)}€`;
 
-// Normalize raw player name → canonical "I.Lastname" for cross-bookmaker dedup
-// "Bradley Barcola" → "B.Barcola"  |  "Barcola" → "Barcola"  |  "B. Barcola" → "B.Barcola"
-// "Fabian Ruiz ou Achraf Hakimi" → returns first: "F.Ruiz"
 function normalizePlayerName(raw) {
   if (!raw) return null;
   let s = raw.replace(/\(.*?\)/g, "").trim();
@@ -260,30 +306,33 @@ function normalizePlayerName(raw) {
   return `${first[0].toUpperCase()}.${rest}`;
 }
 
-// Parse "X ou Y ou Z" multi-player string → [{player, player_display}, ...]
-function parseMultiPlayer(raw) {
-  if (!raw) return [];
-  return raw.split(/\s+ou\s+/i).map(p => {
-    const trimmed = p.replace(/\(.*?\)/g, "").trim();
-    return { player: normalizePlayerName(trimmed), player_display: trimmed };
-  });
+// Compute profit for a bet, freebet-aware
+function betProfit(bet) {
+  if (bet.is_freebet) {
+    // Freebet: stake was 0 real money, gain is all profit
+    return bet.result === "win" ? bet.actual_win : 0;
+  }
+  return bet.actual_win - bet.stake;
+}
+
+// Stake that counts toward "total misé" (freebets excluded)
+function betRealStake(bet) {
+  return bet.is_freebet ? 0 : bet.stake;
 }
 
 function computeStats(bets) {
-  const totalStake = bets.reduce((a, b) => a + b.stake, 0);
-  const totalWin = bets.reduce((a, b) => a + b.actual_win, 0);
-  const profit = totalWin - totalStake;
-  const roi = totalStake > 0 ? (profit / totalStake) * 100 : 0;
+  const totalStake = bets.reduce((a, b) => a + betRealStake(b), 0);
+  const profit = bets.reduce((a, b) => a + betProfit(b), 0);
   const wins = bets.filter(b => b.result === "win").length;
   const rate = bets.length > 0 ? (wins / bets.length) * 100 : 0;
-  return { totalStake, profit, roi, wins, rate, total: bets.length };
+  const avgOdd = bets.length > 0 ? bets.reduce((a,b)=>a+b.total_odd,0)/bets.length : 0;
+  return { totalStake, profit, wins, rate, total: bets.length, avgOdd };
 }
 
 function hasScorer(bet) {
   return bet.selections?.some(s => s.selection_type === "buteur" || s.selection_type === "joueur décisif");
 }
 
-// Groups by canonical player key ("I.Lastname"), keeps best display name
 function getPlayerStats(bets) {
   const map = {};
   bets.forEach(bet => {
@@ -294,16 +343,83 @@ function getPlayerStats(bets) {
       if (!map[key]) map[key] = { player: key, display, wins: 0, losses: 0, profit: 0, count: 0 };
       if (display.length > map[key].display.length) map[key].display = display;
       map[key].count++;
-      if (bet.result === "win") { map[key].wins++; map[key].profit += (bet.actual_win - bet.stake); }
-      else { map[key].losses++; map[key].profit -= bet.stake; }
+      const p = betProfit(bet);
+      if (bet.result === "win") { map[key].wins++; map[key].profit += p; }
+      else { map[key].losses++; map[key].profit += p; }
     });
   });
   return Object.values(map);
 }
 
+// Week key "YYYY-Www"
+function weekKey(dateStr) {
+  const d = new Date(dateStr);
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const wk = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-S${String(wk).padStart(2,"0")}`;
+}
+function monthKey(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+
+// Date filter helpers
+function isToday(dateStr) {
+  const today = new Date(); const d = new Date(dateStr);
+  return d.toDateString() === today.toDateString();
+}
+function isThisWeek(dateStr) {
+  const now = new Date(); const d = new Date(dateStr);
+  const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay() + 1); startOfWeek.setHours(0,0,0,0);
+  return d >= startOfWeek && d <= now;
+}
+function isThisMonth(dateStr) {
+  const now = new Date(); const d = new Date(dateStr);
+  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+}
+
+// Streak analysis: last N bets in chronological order
+function getStreaks(bets) {
+  const sorted = [...bets].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const results = sorted.map(b => b.result); // "win"|"loss"
+  // Current streak
+  let cur = 1;
+  for (let i = results.length-1; i > 0; i--) {
+    if (results[i] === results[i-1]) cur++; else break;
+  }
+  const curType = results[results.length-1];
+  // Best win streak
+  let bestWin = 0, bestLoss = 0, tmp = 1;
+  for (let i = 1; i < results.length; i++) {
+    if (results[i] === results[i-1]) tmp++;
+    else tmp = 1;
+    if (results[i] === "win" && tmp > bestWin) bestWin = tmp;
+    if (results[i] === "loss" && tmp > bestLoss) bestLoss = tmp;
+  }
+  if (results.length > 0) {
+    if (results[0] === "win" && 1 > bestWin) bestWin = 1;
+    if (results[0] === "loss" && 1 > bestLoss) bestLoss = 1;
+  }
+  const last10 = sorted.slice(-10).map(b => b.result);
+  return { current: cur, currentType: curType, bestWin, bestLoss, last10 };
+}
+
+// Odd range buckets
+function getOddRangeStats(bets) {
+  const ranges = [
+    { label: "1.0 – 1.5", min: 1, max: 1.5 },
+    { label: "1.5 – 2.0", min: 1.5, max: 2 },
+    { label: "2.0 – 3.0", min: 2, max: 3 },
+    { label: "3.0+", min: 3, max: 9999 },
+  ];
+  return ranges.map(r => {
+    const sub = bets.filter(b => b.total_odd > r.min && b.total_odd <= r.max);
+    const s = computeStats(sub);
+    return { ...r, count: sub.length, profit: s.profit, wins: s.wins, rate: s.rate };
+  }).filter(r => r.count > 0);
+}
 
 // ─── API ─────────────────────────────────────────────────────────────────────
-// Proxy via Vercel serverless function (avoids CORS)
 const API_ENDPOINT = "/api/claude";
 
 async function callClaude(system, userMsg, maxTokens = 1000) {
@@ -323,38 +439,28 @@ async function analyzeScreenshot(base64, mimeType) {
       system: `Tu extrais les données d'UN SEUL pari depuis une capture d'écran Winamax/Betclic.
 
 ━━━ RÈGLE 1 — QUEL PARI CHOISIR ━━━
-L'image peut contenir plusieurs paris partiellement visibles. Tu dois identifier et extraire
-LE PARI LE PLUS COMPLET, c'est-à-dire celui qui réunit TOUS ces éléments :
-  ✅ Statut visible (label "Gagné" / "Perdu" ou couleur de barre verte/rouge)
-  ✅ Au moins une sélection lisible avec sa cote
-  ✅ Mise (€) visible
-  ✅ Gains (€) visibles
-  ✅ Référence (Réf : XXXXXXXX) visible en bas de CE pari
-
-Ce n'est PAS forcément le premier pari en haut — c'est celui dont tu peux lire TOUS ces champs.
-Si plusieurs paris sont également complets, prends celui dont le statut est le plus clairement affiché.
+L'image peut contenir plusieurs paris. Tu dois identifier et extraire
+LE PARI LE PLUS COMPLET : statut visible, au moins une sélection, mise, gains, référence.
 
 ━━━ RÈGLE 2 — RÉSULTAT ━━━
-Priorité décroissante :
 1. Label texte coloré : "Gagné" (fond vert) → "win" ; "Perdu" (fond rouge) → "loss"
 2. Barre de progression : entièrement verte = win ; rouge présent = loss
 3. Gains > 0 → "win" ; Gains = 0,00 € → "loss"
-4. Symboles ✅/❌ sur les sélections
 
-━━━ RÈGLE 3 — "NON" / "OUI" dans les sélections ━━━
-Si une sélection affiche "Non" ou "Oui" comme modificateur de pari (ex: "Juventus gagne par 3 buts d'écart  Non"),
-inclus-le dans selection_type ET mets negated:true si "Non", negated:false sinon.
+━━━ RÈGLE 3 — FREEBET ━━━
+Si tu vois les mots "freebet", "pari gratuit", "free bet" dans l'image : is_freebet = true
 
-━━━ RÈGLE 4 — JOUEURS ━━━
-- "player" : format canonique "I.Nom" (1ère lettre prénom + point + nom)
-  Ex : "Bradley Barcola" → "B.Barcola" | "Achraf Hakimi" → "A.Hakimi"
+━━━ RÈGLE 4 — "NON" dans les sélections ━━━
+Si une sélection affiche "Non" : inclus-le dans selection_type ET mets negated:true.
+
+━━━ RÈGLE 5 — JOUEURS ━━━
+- "player" : format "I.Nom" (ex: "Bradley Barcola" → "B.Barcola")
 - "player_display" : nom complet tel qu'il apparaît
-- Si plusieurs joueurs ("X ou Y ou Z") : player = premier joueur normalisé, player_display = chaîne complète
 
-━━━ FORMAT DE RÉPONSE ━━━
-JSON valide sans backticks, sans commentaires :
+━━━ FORMAT JSON ━━━
+JSON valide sans backticks :
 {
-  "bet_ref": "référence exacte (ex: 5ZAIVRT2)",
+  "bet_ref": "référence exacte",
   "sport": "Football",
   "bookmaker": "Winamax",
   "competition": "",
@@ -368,28 +474,21 @@ JSON valide sans backticks, sans commentaires :
   "stake": 10.0,
   "actual_win": 0.0,
   "result": "win|loss",
-  "selections": [
-    {
-      "team": "",
-      "player": "B.Barcola",
-      "player_display": "Bradley Barcola",
-      "selection_type": "joueur décisif",
-      "odd": 1.38,
-      "negated": false
-    }
-  ]
+  "is_freebet": false,
+  "selections": [{"team":"","player":"B.Barcola","player_display":"Bradley Barcola","selection_type":"joueur décisif","odd":1.38,"negated":false}]
 }`,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
-        { type: "text", text: "Identifie le pari le plus complet sur cette image (celui qui a statut + sélections + mise + gains + référence tous visibles), puis extrais-le." }
+        { type: "text", text: "Extrais le pari le plus complet visible sur cette image." }
       ]}]
     })
   });
   const data = await r.json();
   const text = (data.content?.find(b => b.type === "text")?.text || "");
   const raw = extractJSON(text);
-
-  // Post-process: normalize player names client-side as safety net
+  // Normalize competition
+  if (raw.competition) raw.competition = normalizeCompetition(raw.competition);
+  // Post-process selections
   if (raw.selections) {
     raw.selections = raw.selections.map(sel => {
       if (sel.player && !sel.player.match(/^[A-Za-zÀ-ÿ]\./)) {
@@ -405,16 +504,9 @@ JSON valide sans backticks, sans commentaires :
   return raw;
 }
 
-// Robustly extract the first complete JSON object from a string that may contain
-// prose before/after (e.g. "D'après l'image voici le JSON : {...}")
 function extractJSON(text) {
-  // 1. Strip markdown fences
   let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-
-  // 2. Try direct parse first (happy path)
   try { return JSON.parse(s); } catch {}
-
-  // 3. Find the first '{' and match its closing '}' by counting braces
   const start = s.indexOf("{");
   if (start === -1) throw new Error("No JSON object found in response");
   let depth = 0, inStr = false, escape = false;
@@ -427,7 +519,7 @@ function extractJSON(text) {
     if (c === "{") depth++;
     else if (c === "}") { depth--; if (depth === 0) { return JSON.parse(s.slice(start, i + 1)); } }
   }
-  throw new Error("Could not find complete JSON object in: " + s.slice(0, 120));
+  throw new Error("Could not find complete JSON object");
 }
 
 async function detectCompetition(team1, team2, date) {
@@ -435,52 +527,64 @@ async function detectCompetition(team1, team2, date) {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001", max_tokens: 400,
-      system: `Tu es un expert en football et sports. Tu identifies la compétition d'un match à partir des équipes et de la date. Utilise la recherche web pour vérifier les informations à jour.
-Réponds UNIQUEMENT avec un JSON valide sans backticks: {"competition":"nom exact officiel","type":"championnat|coupe_nationale|ligue_champions|europa_league|conference_league|amical|autre","confidence":"high|medium|low","source":"web|knowledge"}`,
+      system: `Tu identifies la compétition d'un match sportif.
+Réponds UNIQUEMENT avec un JSON valide sans backticks: {"competition":"nom exact officiel","type":"championnat|coupe_nationale|ligue_champions|europa_league|conference_league|amical|autre","confidence":"high|medium|low"}`,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{
-        role: "user",
-        content: `Recherche dans quelle compétition s'est joué le match "${team1} vs ${team2}" autour du ${date || "2025"}. Cherche sur le web pour avoir l'info précise et à jour. Retourne uniquement le JSON.`
-      }]
+      messages: [{ role: "user", content: `Dans quelle compétition s'est joué "${team1} vs ${team2}" autour du ${date || "2025"} ? JSON uniquement.` }]
     })
   });
   const data = await r.json();
   const textBlock = data.content?.filter(b => b.type === "text").pop();
   const text = textBlock?.text || "";
   try {
-    return extractJSON(text);
+    const result = extractJSON(text);
+    if (result.competition) result.competition = normalizeCompetition(result.competition);
+    return result;
   } catch {
-    return { competition: "", type: "autre", confidence: "low", source: "knowledge" };
+    return { competition: "", type: "autre", confidence: "low" };
   }
 }
 
 async function runAIAnalysis(bets) {
   const stats = computeStats(bets);
-  const players = getPlayerStats(bets);
   const byStruct = {};
   ["simple","combiné","mymatch"].forEach(s => { byStruct[s] = computeStats(bets.filter(b=>b.bet_structure===s)); });
-  const payload = { totalBets: bets.length, roi: stats.roi, winRate: stats.rate, profit: stats.profit, byStructure: byStruct, safeStat: computeStats(bets.filter(b=>b.tag==="SAFE")), funStat: computeStats(bets.filter(b=>b.tag==="FUN")), topPlayers: players.sort((a,b)=>b.profit-a.profit).slice(0,3), worstPlayers: players.sort((a,b)=>a.profit-b.profit).slice(0,3), bets: bets.map(b=>({ date:b.date, match:`${b.team_1} vs ${b.team_2}`, comp:b.competition, struct:b.bet_structure, cat:b.bet_category, odd:b.total_odd, stake:b.stake, win:b.actual_win, result:b.result, tag:b.tag })) };
+  const players = getPlayerStats(bets);
+  const oddRanges = getOddRangeStats(bets);
+  const streaks = getStreaks(bets);
+  const payload = {
+    totalBets: bets.length, winRate: stats.rate, profit: stats.profit,
+    totalStake: stats.totalStake, avgOdd: stats.avgOdd,
+    byStructure: byStruct,
+    oddRanges: oddRanges.map(r=>({range:r.label,count:r.count,profit:r.profit,rate:r.rate})),
+    streak: { current: streaks.current, type: streaks.currentType, bestWin: streaks.bestWin },
+    freebetCount: bets.filter(b=>b.is_freebet).length,
+    tags: [...new Set(bets.map(b=>b.tag))].map(t=>({ tag:t, ...computeStats(bets.filter(b=>b.tag===t)) })),
+    topPlayers: players.sort((a,b)=>b.profit-a.profit).slice(0,3),
+    bets: bets.map(b=>({ date:b.date, match:`${b.team_1} vs ${b.team_2}`, struct:b.bet_structure, odd:b.total_odd, stake:b.stake, win:b.actual_win, result:b.result, tag:b.tag, freebet:b.is_freebet }))
+  };
   return callClaude(
-    `Tu es un analyste expert en paris sportifs. Analyse les données de paris d'un utilisateur et fournis une analyse personnalisée, directe et actionnable en français. Utilise les vrais chiffres. Structure ton analyse: 1) Profil de parieur, 2) Ce qui marche, 3) Ce qui ne marche pas, 4) Recommandations concrètes pour améliorer le ROI.`,
-    `Voici mes données de paris:\n${JSON.stringify(payload, null, 2)}`, 1000
+    `Tu es un analyste expert en paris sportifs. Analyse les données et fournis une analyse personnalisée, directe et actionnable en français. Structure : 1) Profil de parieur, 2) Ce qui marche, 3) Ce qui ne marche pas, 4) Recommandations concrètes.`,
+    `Voici mes données:\n${JSON.stringify(payload, null, 2)}`, 1000
   );
 }
 
 // ─── BET DETAIL MODAL ────────────────────────────────────────────────────────
 function BetDetailModal({ bet, onClose }) {
-  const profit = bet.actual_win - bet.stake;
+  const profit = betProfit(bet);
   const isCombo = bet.bet_structure === "combiné" || bet.bet_structure === "mymatch";
+  const tagColor = bet.tag === "SAFE" ? "var(--safe)" : bet.tag === "FUN" ? "var(--fun)" : "var(--accent2)";
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-sheet">
         <div className="modal-handle" />
         <button className="modal-close" onClick={onClose}>✕</button>
         <div className="modal-header">
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-            <div className={`result-chip ${bet.result === 'win' ? 'result-win' : 'result-loss'}`}>{bet.result === 'win' ? '🏆 Gagné' : '❌ Perdu'}</div>
-            {bet.tag === "SAFE" ? <span className="meta-chip chip-safe">🛡️ SAFE</span> : <span className="meta-chip chip-fun">🎲 FUN</span>}
-            {hasScorer(bet) && <span className="meta-chip chip-scorer">⚽ Buteur</span>}
-            {isCombo && <span className="meta-chip chip-struct">{bet.bet_structure}</span>}
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
+            <div className={`result-chip ${bet.result==='win'?'result-win':'result-loss'}`}>{bet.result==='win'?'🏆 Gagné':'❌ Perdu'}</div>
+            <span style={{padding:'5px 10px',borderRadius:20,border:`1px solid ${tagColor}33`,background:`${tagColor}18`,fontSize:11,fontWeight:700,fontFamily:'var(--font-head)',color:tagColor}}>{bet.tag}</span>
+            {bet.is_freebet && <span className="freebet-tag">🎁 Freebet</span>}
+            {hasScorer(bet) && <span style={{padding:'5px 10px',borderRadius:20,border:'1px solid rgba(212,170,255,0.3)',background:'rgba(212,170,255,0.1)',fontSize:11,fontWeight:700,fontFamily:'var(--font-head)',color:'var(--scorer)'}}>⚽ Buteur</span>}
           </div>
           <div className="modal-title">{bet.team_1} vs {bet.team_2}</div>
           <div className="modal-sub">{bet.competition} · {bet.date} à {bet.heure} · {bet.bookmaker}</div>
@@ -490,36 +594,26 @@ function BetDetailModal({ bet, onClose }) {
             <div className="detail-section-title">Financier</div>
             <div className="detail-grid">
               <div className="detail-item"><div className="detail-item-label">Cote totale</div><div className="detail-item-value" style={{color:'var(--accent)'}}>×{fmt(bet.total_odd)}</div></div>
-              <div className="detail-item"><div className="detail-item-label">Mise</div><div className="detail-item-value">{fmt(bet.stake)}€</div></div>
+              <div className="detail-item"><div className="detail-item-label">{bet.is_freebet ? "Freebet (valeur)" : "Mise"}</div><div className="detail-item-value">{fmt(bet.stake)}€{bet.is_freebet && <span style={{fontSize:10,color:'var(--accent2)',marginLeft:4}}>gratuit</span>}</div></div>
               <div className="detail-item"><div className="detail-item-label">Gain brut</div><div className="detail-item-value">{fmt(bet.actual_win)}€</div></div>
-              <div className="detail-item"><div className="detail-item-label">Profit net</div><div className="detail-item-value" style={{color: profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(profit)}</div></div>
+              <div className="detail-item"><div className="detail-item-label">Profit net</div><div className="detail-item-value" style={{color:profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(profit)}</div></div>
             </div>
           </div>
-
           {bet.selections?.length > 0 && (
             <div className="detail-section">
-              <div className="detail-section-title">
-                {isCombo ? `${bet.selections.length} sélections du combiné` : "Sélection"}
-              </div>
+              <div className="detail-section-title">{isCombo ? `${bet.selections.length} sélections` : "Sélection"}</div>
               {bet.selections.map((sel, i) => {
                 const isNeg = sel.negated || sel.selection_type?.includes("— Non");
                 return (
-                  <div key={i} className="selection-detail" style={isNeg ? {borderColor:'rgba(255,153,87,0.3)',background:'rgba(255,153,87,0.04)'} : {}}>
+                  <div key={i} className="selection-detail" style={isNeg?{borderColor:'rgba(255,153,87,0.3)',background:'rgba(255,153,87,0.04)'}:{}}>
                     <div className="sel-top">
                       <div style={{flex:1}}>
                         <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,flexWrap:'wrap'}}>
                           <div className="sel-team">{sel.team}</div>
-                          {isNeg && <span style={{background:'rgba(255,153,87,0.15)',color:'var(--fun)',border:'1px solid rgba(255,153,87,0.35)',borderRadius:5,fontSize:10,fontWeight:800,padding:'1px 6px',fontFamily:'var(--font-head)',letterSpacing:'0.3px'}}>NON ↩</span>}
+                          {isNeg && <span style={{background:'rgba(255,153,87,0.15)',color:'var(--fun)',border:'1px solid rgba(255,153,87,0.35)',borderRadius:5,fontSize:10,fontWeight:800,padding:'1px 6px',fontFamily:'var(--font-head)'}}>NON ↩</span>}
                         </div>
                         <div className="sel-type">{sel.selection_type}</div>
-                        {sel.player && (
-                          <div style={{marginTop:5,display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}>
-                            <span className="scorer-tag">⚽ {sel.player_display || sel.player}</span>
-                            {sel.player !== (sel.player_display || sel.player) && (
-                              <span style={{fontSize:10,color:'var(--text3)',fontFamily:'var(--font-head)',fontWeight:600}}>{sel.player}</span>
-                            )}
-                          </div>
-                        )}
+                        {sel.player && <div style={{marginTop:5}}><span className="scorer-tag">⚽ {sel.player_display||sel.player}</span></div>}
                       </div>
                       <div className="sel-odd-big">×{fmt(sel.odd)}</div>
                     </div>
@@ -528,8 +622,8 @@ function BetDetailModal({ bet, onClose }) {
               })}
               {isCombo && (
                 <div className="combo-total">
-                  <span style={{fontSize:12, color:'var(--text2)'}}>Cote combinée finale</span>
-                  <span style={{fontFamily:'var(--font-head)', fontSize:20, fontWeight:800, color:'var(--accent)'}}>×{fmt(bet.total_odd)}</span>
+                  <span style={{fontSize:12,color:'var(--text2)'}}>Cote combinée</span>
+                  <span style={{fontFamily:'var(--font-head)',fontSize:20,fontWeight:800,color:'var(--accent)'}}>×{fmt(bet.total_odd)}</span>
                 </div>
               )}
             </div>
@@ -552,6 +646,8 @@ function UploadTab({ setBets, addBet, bets }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [extracted, setExtracted] = useState(null);
   const [tag, setTag] = useState("SAFE");
+  const [customTag, setCustomTag] = useState("");
+  const [isFreebet, setIsFreebet] = useState(false);
   const [error, setError] = useState("");
   const [drag, setDrag] = useState(false);
   const [compDetect, setCompDetect] = useState(null);
@@ -559,6 +655,9 @@ function UploadTab({ setBets, addBet, bets }) {
   const [dupWarning, setDupWarning] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef();
+
+  // Derive unique custom tags from existing bets
+  const existingTags = [...new Set(bets.map(b=>b.tag).filter(t=>t && t!=="SAFE" && t!=="FUN"))];
 
   const handleFile = useCallback(async (file) => {
     if (!file?.type.startsWith("image/")) return;
@@ -569,8 +668,9 @@ function UploadTab({ setBets, addBet, bets }) {
       const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(file); });
       const data = await analyzeScreenshot(b64, file.type);
       setExtracted(data);
+      // Auto-detect freebet from OCR
+      if (data.is_freebet) setIsFreebet(true);
       setPhase("validating");
-      // Check for duplicate ref
       if (data.bet_ref) {
         const isDup = bets.some(b => b.bet_ref && b.bet_ref === data.bet_ref);
         if (isDup) setDupWarning(true);
@@ -580,7 +680,7 @@ function UploadTab({ setBets, addBet, bets }) {
         try {
           const comp = await detectCompetition(data.team_1, data.team_2, data.date);
           setCompDetect(comp);
-          setExtracted(prev => ({ ...prev, competition: comp.competition }));
+          setExtracted(prev => ({ ...prev, competition: normalizeCompetition(comp.competition) }));
         } catch {}
         setDetectingComp(false);
       }
@@ -597,8 +697,10 @@ function UploadTab({ setBets, addBet, bets }) {
   const handleConfirm = async (force = false) => {
     if (!force && dupWarning) return;
     setSaving(true);
+    const finalTag = customTag.trim() ? customTag.trim().toUpperCase() : tag;
     try {
-      await addBet({ ...extracted, tag });
+      // Freebet: if win, keep actual_win as-is (already correct). stake stored as original freebet value for reference.
+      await addBet({ ...extracted, tag: finalTag, is_freebet: isFreebet });
       setPhase("success");
     } catch(e) {
       setError("Erreur d'enregistrement : " + (e.message || ""));
@@ -608,6 +710,7 @@ function UploadTab({ setBets, addBet, bets }) {
 
   const reset = () => {
     setPhase("idle"); setPreviewUrl(null); setExtracted(null); setTag("SAFE");
+    setCustomTag(""); setIsFreebet(false);
     setError(""); setCompDetect(null); setDetectingComp(false); setDupWarning(false); setSaving(false);
     if(fileRef.current) fileRef.current.value="";
   };
@@ -655,14 +758,13 @@ function UploadTab({ setBets, addBet, bets }) {
         <div className={`result-chip ${extracted.result==='win'?'result-win':'result-loss'}`}>{extracted.result==='win'?'🏆 Gagné':'❌ Perdu'}</div>
       </div>
 
-      {/* DUPLICATE WARNING */}
       {dupWarning && (
         <div style={{background:'rgba(255,153,87,0.1)',border:'1px solid rgba(255,153,87,0.35)',borderRadius:'var(--radius-sm)',padding:'12px 14px',marginBottom:12}}>
           <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,color:'var(--fun)',marginBottom:4}}>⚠️ Pari potentiellement déjà enregistré</div>
-          <div style={{fontSize:12,color:'var(--text2)',lineHeight:1.5,marginBottom:10}}>La référence <strong style={{color:'var(--text)',fontFamily:'var(--font-head)'}}>{extracted.bet_ref}</strong> correspond à un pari déjà dans ta base. Vérifie avant de confirmer.</div>
+          <div style={{fontSize:12,color:'var(--text2)',lineHeight:1.5,marginBottom:10}}>La référence <strong style={{color:'var(--text)',fontFamily:'var(--font-head)'}}>{extracted.bet_ref}</strong> est déjà dans ta base.</div>
           <div style={{display:'flex',gap:8}}>
             <button onClick={()=>handleConfirm(true)} disabled={saving} style={{flex:1,padding:'8px',background:'rgba(255,153,87,0.15)',border:'1px solid rgba(255,153,87,0.4)',borderRadius:8,color:'var(--fun)',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'var(--font-head)'}}>
-              {saving ? "Enregistrement…" : "Enregistrer quand même"}
+              {saving?"Enregistrement…":"Enregistrer quand même"}
             </button>
             <button onClick={reset} style={{flex:1,padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text2)',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'var(--font-head)'}}>Annuler</button>
           </div>
@@ -674,14 +776,8 @@ function UploadTab({ setBets, addBet, bets }) {
           <div className="competition-detect-icon">{detectingComp?'🔍':'🏆'}</div>
           <div>
             {detectingComp
-              ? <div style={{fontSize:12,color:'var(--accent2)'}}>Recherche de la compétition en cours…</div>
-              : <>
-                  <div className="competition-detect-label">
-                    Compétition détectée {compDetect.source==='web'?'via web 🌐':'via base de connaissance'}
-                    {compDetect.confidence==='high'?' · Haute confiance':compDetect.confidence==='medium'?' · Confiance moyenne':''}
-                  </div>
-                  <div className="competition-detect-name">{compDetect.competition}</div>
-                </>
+              ? <div style={{fontSize:12,color:'var(--accent2)'}}>Recherche de la compétition…</div>
+              : <><div className="competition-detect-label">Compétition détectée {compDetect.confidence==='high'?'· Haute confiance':''}</div><div className="competition-detect-name">{compDetect.competition}</div></>
             }
           </div>
         </div>
@@ -689,19 +785,17 @@ function UploadTab({ setBets, addBet, bets }) {
 
       <div className="card">
         <div className="card-title">Informations générales</div>
-        {/* Bet reference — shown read-only for transparency */}
         {extracted.bet_ref && (
           <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px',marginBottom:12}}>
             <span style={{fontSize:11,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600,flexShrink:0}}>Réf</span>
             <span style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,color:'var(--text2)',flex:1}}>{extracted.bet_ref}</span>
-            <span style={{fontSize:10,color:'var(--text3)'}}>Anti-doublons ✓</span>
           </div>
         )}
         <div className="field-row">
           <div className="field-group"><div className="field-label">Sport</div><input className="field-input" value={extracted.sport||""} onChange={e=>upd("sport",e.target.value)} /></div>
           <div className="field-group"><div className="field-label">Bookmaker</div><select className="field-input" value={extracted.bookmaker||""} onChange={e=>upd("bookmaker",e.target.value)}><option>Winamax</option><option>Betclic</option></select></div>
         </div>
-        <div className="field-group"><div className="field-label">Compétition</div><input className="field-input" value={extracted.competition||""} onChange={e=>upd("competition",e.target.value)} /></div>
+        <div className="field-group"><div className="field-label">Compétition</div><input className="field-input" value={extracted.competition||""} onChange={e=>upd("competition",normalizeCompetition(e.target.value))} /></div>
         <div className="field-row">
           <div className="field-group"><div className="field-label">Équipe 1</div><input className="field-input" value={extracted.team_1||""} onChange={e=>upd("team_1",e.target.value)} /></div>
           <div className="field-group"><div className="field-label">Équipe 2</div><input className="field-input" value={extracted.team_2||""} onChange={e=>upd("team_2",e.target.value)} /></div>
@@ -720,16 +814,25 @@ function UploadTab({ setBets, addBet, bets }) {
         </div>
         <div className="field-row">
           <div className="field-group"><div className="field-label">Cote totale</div><input className="field-input" type="number" step="0.01" value={extracted.total_odd||""} onChange={e=>upd("total_odd",parseFloat(e.target.value))} /></div>
-          <div className="field-group"><div className="field-label">Mise (€)</div><input className="field-input" type="number" step="0.5" value={extracted.stake||""} onChange={e=>upd("stake",parseFloat(e.target.value))} /></div>
+          <div className="field-group"><div className="field-label">{isFreebet ? "Valeur freebet (€)" : "Mise (€)"}</div><input className="field-input" type="number" step="0.5" value={extracted.stake||""} onChange={e=>upd("stake",parseFloat(e.target.value))} /></div>
         </div>
         <div className="field-group"><div className="field-label">Gain réel (€)</div><input className="field-input" type="number" step="0.01" value={extracted.actual_win||""} onChange={e=>upd("actual_win",parseFloat(e.target.value))} /></div>
+
+        {/* FREEBET TOGGLE */}
+        <label className={`freebet-toggle ${isFreebet?'active':''}`} onClick={()=>setIsFreebet(p=>!p)}>
+          <div className={`freebet-box ${isFreebet?'checked':''}`}>{isFreebet && <span style={{color:'#0a0a0f',fontSize:11,fontWeight:800}}>✓</span>}</div>
+          <div>
+            <div className="freebet-toggle-label">🎁 Ce pari est un freebet</div>
+            <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>La mise réelle est 0€ — le gain affiché est ton profit</div>
+          </div>
+        </label>
       </div>
 
       {extracted.selections?.length > 0 && (
         <div className="card">
           <div className="card-title">Sélections ({extracted.selections.length})</div>
           {extracted.selections.map((s,i) => {
-            const isScorer = s.selection_type==="buteur" || s.selection_type==="joueur décisif" || s.selection_type?.toLowerCase().includes("buteur") || s.selection_type?.toLowerCase().includes("joueur décisif");
+            const isScorer = s.selection_type?.toLowerCase().includes("buteur") || s.selection_type?.toLowerCase().includes("joueur décisif");
             const isNeg = s.negated || s.selection_type?.includes("— Non");
             return (
               <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)',background:'rgba(255,153,87,0.03)'}:{}}>
@@ -740,7 +843,6 @@ function UploadTab({ setBets, addBet, bets }) {
                     {isNeg && <span style={{background:'rgba(255,153,87,0.15)',color:'var(--fun)',border:'1px solid rgba(255,153,87,0.35)',borderRadius:5,fontSize:10,fontWeight:800,padding:'1px 5px',fontFamily:'var(--font-head)'}}>NON ↩</span>}
                   </div>
                   <div className="selection-type">{s.selection_type}</div>
-                  {s.player && <div style={{fontSize:10,color:'var(--text3)',marginTop:2,fontFamily:'var(--font-head)',fontWeight:600,letterSpacing:'0.3px'}}>ID joueur : {s.player}</div>}
                 </div>
                 <div className="selection-odd">×{fmt(s.odd)}</div>
               </div>
@@ -750,10 +852,16 @@ function UploadTab({ setBets, addBet, bets }) {
       )}
 
       <div className="card">
-        <div className="card-title">Tag du pari</div>
+        <div className="card-title">Catégorie du pari</div>
         <div className="tag-selector">
-          <button className={`tag-btn safe ${tag==='SAFE'?'selected':''}`} onClick={()=>setTag("SAFE")}><div className="tag-emoji">🛡️</div>SAFE</button>
-          <button className={`tag-btn fun ${tag==='FUN'?'selected':''}`} onClick={()=>setTag("FUN")}><div className="tag-emoji">🎲</div>FUN</button>
+          {["SAFE", "FUN", ...existingTags].map(t => (
+            <button key={t} className={`tag-btn ${tag===t && !customTag?'selected':''}`} onClick={()=>{setTag(t);setCustomTag("");}}>{t}</button>
+          ))}
+        </div>
+        <div className="field-group" style={{marginBottom:0}}>
+          <div className="field-label">Nouvelle catégorie</div>
+          <input className="field-input" placeholder="ex: VALUE, NBA, RISKY…" value={customTag} onChange={e=>setCustomTag(e.target.value.toUpperCase())} />
+          {customTag && <div style={{fontSize:11,color:'var(--accent2)',marginTop:4}}>✓ Catégorie "{customTag}" sera créée</div>}
         </div>
       </div>
 
@@ -769,131 +877,85 @@ function UploadTab({ setBets, addBet, bets }) {
 // ─── BETS TAB ────────────────────────────────────────────────────────────────
 function BetsTab({ bets }) {
   const [selected, setSelected] = useState(null);
-  const [filterResult, setFilterResult] = useState("Tous");     // Tous | Win | Loss
-  const [filterTag, setFilterTag] = useState("Tous");           // Tous | SAFE | FUN | Buteur
-  const [filterSport, setFilterSport] = useState("Tous");
-  const [filterComp, setFilterComp] = useState("Toutes");
-  const [filterBook, setFilterBook] = useState("Tous");
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterResult, setFilterResult] = useState("Tous");
+  const [filterTag, setFilterTag] = useState("Tous");
+  const [filterDate, setFilterDate] = useState("Tous");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showDateRange, setShowDateRange] = useState(false);
 
-  // Derive unique values from data
-  const sports = ["Tous", ...Array.from(new Set(bets.map(b => b.sport).filter(Boolean))).sort()];
-  const competitions = ["Toutes", ...Array.from(new Set(bets.map(b => b.competition).filter(Boolean))).sort()];
-  const bookmakers = ["Tous", ...Array.from(new Set(bets.map(b => b.bookmaker).filter(Boolean))).sort()];
+  const allTags = ["Tous", ...Array.from(new Set(bets.map(b=>b.tag).filter(Boolean))).sort()];
 
   const filtered = bets.filter(b => {
     if (filterResult === "Win" && b.result !== "win") return false;
     if (filterResult === "Loss" && b.result !== "loss") return false;
-    if (filterTag === "SAFE" && b.tag !== "SAFE") return false;
-    if (filterTag === "FUN" && b.tag !== "FUN") return false;
-    if (filterTag === "Buteur" && !hasScorer(b)) return false;
-    if (filterSport !== "Tous" && b.sport !== filterSport) return false;
-    if (filterComp !== "Toutes" && b.competition !== filterComp) return false;
-    if (filterBook !== "Tous" && b.bookmaker !== filterBook) return false;
+    if (filterTag !== "Tous" && b.tag !== filterTag) return false;
+    if (filterDate === "Aujourd'hui" && !isToday(b.date)) return false;
+    if (filterDate === "Cette semaine" && !isThisWeek(b.date)) return false;
+    if (filterDate === "Ce mois" && !isThisMonth(b.date)) return false;
+    if (filterDate === "Plage" && dateFrom && new Date(b.date) < new Date(dateFrom)) return false;
+    if (filterDate === "Plage" && dateTo && new Date(b.date) > new Date(dateTo)) return false;
     return true;
   });
 
-  const activeFiltersCount = [
-    filterResult !== "Tous", filterTag !== "Tous",
-    filterSport !== "Tous", filterComp !== "Toutes", filterBook !== "Tous"
-  ].filter(Boolean).length;
-
-  const resetAll = () => { setFilterResult("Tous"); setFilterTag("Tous"); setFilterSport("Tous"); setFilterComp("Toutes"); setFilterBook("Tous"); };
-
   return (
     <div>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-        <div className="section-title" style={{marginBottom:0}}>{filtered.length} / {bets.length} paris</div>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          {activeFiltersCount > 0 && (
-            <button onClick={resetAll} style={{background:'rgba(255,87,112,0.12)',border:'1px solid rgba(255,87,112,0.3)',borderRadius:20,padding:'4px 10px',fontSize:11,color:'var(--loss)',cursor:'pointer',fontFamily:'var(--font-head)',fontWeight:700}}>
-              ✕ Réinitialiser ({activeFiltersCount})
-            </button>
-          )}
-          <button onClick={()=>setShowFilters(p=>!p)} style={{background: showFilters?'rgba(200,255,87,0.12)':'var(--surface2)',border:`1px solid ${showFilters?'var(--accent)':'var(--border)'}`,borderRadius:20,padding:'5px 12px',fontSize:12,color:showFilters?'var(--accent)':'var(--text2)',cursor:'pointer',fontFamily:'var(--font-head)',fontWeight:700,display:'flex',alignItems:'center',gap:5}}>
-            ⚙️ Filtres {activeFiltersCount > 0 && <span style={{background:'var(--accent)',color:'#0a0a0f',borderRadius:'50%',width:16,height:16,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{activeFiltersCount}</span>}
-          </button>
-        </div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+        <div className="section-title" style={{marginBottom:0}}>{filtered.length} paris</div>
+        {filtered.length !== bets.length && (
+          <button onClick={()=>{setFilterResult("Tous");setFilterTag("Tous");setFilterDate("Tous");}} style={{background:'rgba(255,87,112,0.1)',border:'1px solid rgba(255,87,112,0.25)',borderRadius:20,padding:'4px 10px',fontSize:11,color:'var(--loss)',cursor:'pointer',fontFamily:'var(--font-head)',fontWeight:700}}>✕ Reset</button>
+        )}
       </div>
 
-      {/* QUICK FILTERS ROW 1 — Résultat */}
+      {/* DATE FILTERS */}
+      <div className="date-filter-row">
+        {["Tous","Aujourd'hui","Cette semaine","Ce mois","Plage"].map(f=>(
+          <button key={f} className={`date-pill ${filterDate===f?'active':''}`} onClick={()=>{setFilterDate(f);if(f==="Plage")setShowDateRange(true);else setShowDateRange(false);}}>
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {showDateRange && filterDate === "Plage" && (
+        <div style={{display:'flex',gap:8,marginBottom:10}}>
+          <input className="field-input" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{fontSize:12,padding:'8px 10px'}} />
+          <input className="field-input" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{fontSize:12,padding:'8px 10px'}} />
+        </div>
+      )}
+
+      {/* RESULT + TAG FILTERS */}
       <div className="filter-scroll">
         {["Tous","Win","Loss"].map(f=>(
           <button key={f} className={`filter-chip ${filterResult===f?'active':''}`} onClick={()=>setFilterResult(f)}>
-            {f==="Win"?"🏆 Win":f==="Loss"?"❌ Loss":"Tous résultats"}
+            {f==="Win"?"🏆 Win":f==="Loss"?"❌ Loss":"Tous"}
           </button>
         ))}
         <div style={{width:1,background:'var(--border)',flexShrink:0,margin:'0 2px'}}/>
-        {["Tous","SAFE","FUN","Buteur"].map(f=>(
-          <button key={f} className={`filter-chip ${filterTag===f?'active':''}`} onClick={()=>setFilterTag(f)}>
-            {f==="SAFE"?"🛡️ SAFE":f==="FUN"?"🎲 FUN":f==="Buteur"?"⚽ Buteur":"Tous tags"}
-          </button>
+        {allTags.map(f=>(
+          <button key={f} className={`filter-chip ${filterTag===f?'active':''}`} onClick={()=>setFilterTag(f)}>{f}</button>
         ))}
       </div>
-
-      {/* ADVANCED FILTERS PANEL */}
-      {showFilters && (
-        <div className="card" style={{marginBottom:12,padding:'14px'}}>
-          <div style={{fontFamily:'var(--font-head)',fontSize:11,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.7px',marginBottom:12}}>Filtres avancés</div>
-
-          <div className="field-group" style={{marginBottom:10}}>
-            <div className="field-label">Sport</div>
-            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-              {sports.map(s=>(
-                <button key={s} onClick={()=>setFilterSport(s)} style={{padding:'5px 12px',borderRadius:20,border:`1px solid ${filterSport===s?'var(--accent2)':'var(--border)'}`,background:filterSport===s?'rgba(87,200,255,0.12)':'var(--surface2)',color:filterSport===s?'var(--accent2)':'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font-head)',transition:'all 0.15s'}}>
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="field-group" style={{marginBottom:10}}>
-            <div className="field-label">Compétition / Championnat</div>
-            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-              {competitions.map(c=>(
-                <button key={c} onClick={()=>setFilterComp(c)} style={{padding:'5px 12px',borderRadius:20,border:`1px solid ${filterComp===c?'var(--accent)':'var(--border)'}`,background:filterComp===c?'rgba(200,255,87,0.12)':'var(--surface2)',color:filterComp===c?'var(--accent)':'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font-head)',transition:'all 0.15s',whiteSpace:'nowrap'}}>
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="field-group" style={{marginBottom:0}}>
-            <div className="field-label">Bookmaker</div>
-            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-              {bookmakers.map(bk=>(
-                <button key={bk} onClick={()=>setFilterBook(bk)} style={{padding:'5px 12px',borderRadius:20,border:`1px solid ${filterBook===bk?'rgba(255,107,107,0.5)':'var(--border)'}`,background:filterBook===bk?'rgba(255,107,107,0.1)':'var(--surface2)',color:filterBook===bk?'var(--loss)':'var(--text2)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font-head)',transition:'all 0.15s'}}>
-                  {bk}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {filtered.length === 0
         ? <div className="empty-state"><div className="e-icon">🔍</div><div className="e-title">Aucun pari</div><div className="e-sub">Aucun résultat pour ces filtres.</div></div>
         : filtered.map(bet => {
-          const profit = bet.actual_win - bet.stake;
+          const profit = betProfit(bet);
+          const sportEmoji = { Football:"⚽", Tennis:"🎾", Basketball:"🏀", Rugby:"🏉", Hockey:"🏒" }[bet.sport] || "🎯";
           return (
-            <div key={bet.id} className="bet-card" onClick={()=>setSelected(bet)}>
-              <div className="bet-card-top">
-                <div>
-                  <div className="bet-match">{bet.team_1} vs {bet.team_2}</div>
-                  <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>{bet.competition} · {bet.date}</div>
+            <div key={bet.id} className="bet-row" onClick={()=>setSelected(bet)}>
+              <div className={`bet-row-result ${bet.result}`}>{bet.result==='win'?'✓':'✕'}</div>
+              <div className="bet-row-left">
+                <div className="bet-row-type">
+                  <span>{sportEmoji}</span>
+                  <span>{bet.bet_structure === "simple" ? "Simple" : bet.bet_structure === "combiné" ? "Combiné" : "MyMatch"}</span>
+                  {bet.is_freebet && <span className="freebet-tag" style={{fontSize:9,padding:'1px 5px'}}>FB</span>}
+                  {bet.tag && bet.tag !== "SAFE" && bet.tag !== "FUN" && <span style={{fontSize:10,color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700}}>{bet.tag}</span>}
                 </div>
-                <div className={`result-chip ${bet.result==='win'?'result-win':'result-loss'}`} style={{marginLeft:8,flexShrink:0}}>{bet.result==='win'?'🏆':'❌'}</div>
+                <div className="bet-row-meta">{bet.sport} · {bet.competition || bet.team_1} · {bet.date}</div>
               </div>
-              <div className="bet-meta">
-                <span className="meta-chip chip-sport">{bet.sport}</span>
-                <span className="meta-chip chip-struct">{bet.bet_structure}</span>
-                {bet.tag==='SAFE'?<span className="meta-chip chip-safe">🛡️ SAFE</span>:<span className="meta-chip chip-fun">🎲 FUN</span>}
-                {hasScorer(bet) && <span className="meta-chip chip-scorer">⚽ Buteur</span>}
-              </div>
-              <div className="bet-card-bottom">
-                <div><div className="bet-stat-label">Cote</div><div className="bet-stat-value" style={{color:'var(--accent)'}}>×{fmt(bet.total_odd)}</div></div>
-                <div><div className="bet-stat-label">Mise</div><div className="bet-stat-value">{fmt(bet.stake)}€</div></div>
-                <div><div className="bet-stat-label">Profit</div><div className="bet-stat-value" style={{color:profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(profit)}</div></div>
+              <div className="bet-row-right">
+                <div className="bet-row-odd">×{fmt(bet.total_odd)}</div>
+                <div className="bet-row-gain" style={{color:profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(profit)}</div>
               </div>
             </div>
           );
@@ -904,106 +966,339 @@ function BetsTab({ bets }) {
   );
 }
 
-// ─── DONUT + SPARKLINE ───────────────────────────────────────────────────────
+// ─── CHARTS ──────────────────────────────────────────────────────────────────
+function BarChart({ data, colorFn }) {
+  const maxAbs = Math.max(...data.map(d=>Math.abs(d.value)), 0.01);
+  return (
+    <div className="bar-chart">
+      {data.map((d,i) => (
+        <div key={i} className="bar-row">
+          <div className="bar-label" title={d.label}>{d.label}</div>
+          <div className="bar-track">
+            <div className="bar-fill" style={{width:`${(Math.abs(d.value)/maxAbs)*100}%`, background: colorFn ? colorFn(d.value) : (d.value>=0?'var(--win)':'var(--loss)')}} />
+          </div>
+          <div className="bar-val" style={{color:d.value>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(d.value)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WeeklyBarChart({ bets }) {
+  const [mode, setMode] = useState("month");
+  const grouped = {};
+  bets.forEach(b => {
+    const k = mode === "week" ? weekKey(b.date) : monthKey(b.date);
+    if (!grouped[k]) grouped[k] = [];
+    grouped[k].push(b);
+  });
+  const keys = Object.keys(grouped).sort().slice(-12);
+  const data = keys.map(k => {
+    const p = grouped[k].reduce((a,b)=>a+betProfit(b), 0);
+    return { label: k.replace(/^\d{4}-/,""), value: p };
+  });
+  if (data.length < 2) return <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'12px 0'}}>Pas assez de données</div>;
+  const maxAbs = Math.max(...data.map(d=>Math.abs(d.value)), 0.01);
+  const barW = Math.min(32, Math.floor(300 / data.length) - 4);
+  return (
+    <div>
+      <div className="tab-switch" style={{marginBottom:10}}>
+        <button className={`tab-switch-btn ${mode==='month'?'active':''}`} onClick={()=>setMode('month')}>Par mois</button>
+        <button className={`tab-switch-btn ${mode==='week'?'active':''}`} onClick={()=>setMode('week')}>Par semaine</button>
+      </div>
+      <div style={{display:'flex',alignItems:'flex-end',gap:3,height:80,paddingBottom:4}}>
+        {data.map((d,i)=>{
+          const pct = Math.abs(d.value)/maxAbs;
+          const h = Math.max(pct*68, 4);
+          return (
+            <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+              <div style={{width:'100%',height:68,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+                <div style={{width:'100%',maxWidth:barW,height:h,borderRadius:'3px 3px 0 0',background:d.value>=0?'var(--win)':'var(--loss)',opacity:0.85,minHeight:4}} title={`${d.label}: ${fmtEuro(d.value)}`}/>
+              </div>
+              <div style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--font-head)',fontWeight:700,letterSpacing:'0.3px',maxWidth:barW,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'}}>{d.label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function DonutChart({ segments, size=80 }) {
   const r=(size/2)-8, cx=size/2, cy=size/2, circ=2*Math.PI*r;
   let offset=0, total=segments.reduce((a,s)=>a+s.value,0);
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{transform:'rotate(-90deg)'}}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{transform:'rotate(-90deg)',flexShrink:0}}>
       {segments.map((seg,i)=>{ const pct=total>0?seg.value/total:0, dash=pct*circ, gap=circ-dash; const el=<circle key={i} r={r} cx={cx} cy={cy} fill="none" stroke={seg.color} strokeWidth={12} strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset*circ}/>; offset+=pct; return el; })}
     </svg>
   );
 }
 
-function ProfitLine({ bets }) {
-  if(bets.length<2) return <div style={{height:120,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)',fontSize:12}}>Pas assez de données</div>;
-  const sorted=[...bets].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  let running=0; const pts=sorted.map(b=>{running+=(b.actual_win-b.stake);return running;});
-  const mn=Math.min(...pts,0), mx=Math.max(...pts,0.01), w=360, h=100;
-  const px=i=>(i/(pts.length-1))*(w-4)+2;
-  const py=v=>h-((v-mn)/(mx-mn))*(h-4)-2;
-  const d=pts.map((v,i)=>`${i===0?'M':'L'}${px(i)},${py(v)}`).join(' ');
-  const fill=d+` L${px(pts.length-1)},${h} L${px(0)},${h} Z`;
-  const last=pts[pts.length-1], color=last>=0?'#57ff9e':'#ff5770';
+// ─── BANKROLL CHART ───────────────────────────────────────────────────────────
+function BankrollChart({ bets }) {
+  const [startCapital, setStartCapital] = useState("");
+  const start = parseFloat(startCapital) || 0;
+
+  const sorted = [...bets].sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (sorted.length < 2) return (
+    <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'12px 0'}}>Pas assez de données (min. 2 paris)</div>
+  );
+
+  // Build points: one per day with bets, cumulative
+  const byDay = {};
+  sorted.forEach(b => {
+    if (!byDay[b.date]) byDay[b.date] = 0;
+    byDay[b.date] += betProfit(b);
+  });
+  const days = Object.keys(byDay).sort();
+  let running = start;
+  const pts = [{ d: "Départ", v: start }];
+  days.forEach(d => { running += byDay[d]; pts.push({ d: d.slice(5), v: running }); });
+
+  const W = 340, H = 110;
+  const vals = pts.map(p=>p.v);
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const range = mx - mn || 1;
+  const px = i => (i / (pts.length - 1)) * (W - 8) + 4;
+  const py = v => H - 16 - ((v - mn) / range) * (H - 32);
+  const last = pts[pts.length - 1].v;
+  const color = last >= start ? '#57ff9e' : '#ff5770';
+  const zeroY = py(start > 0 ? start : 0);
+  const path = pts.map((p,i) => `${i===0?'M':'L'}${px(i)},${py(p.v)}`).join(' ');
+  const area = path + ` L${px(pts.length-1)},${H-4} L${px(0)},${H-4} Z`;
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="120" style={{display:'block'}}>
-      <defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.3"/><stop offset="100%" stopColor={color} stopOpacity="0.02"/></linearGradient></defs>
-      <line x1={0} y1={py(0)} x2={w} y2={py(0)} stroke="var(--border)" strokeWidth="1" strokeDasharray="4,4"/>
-      <path d={fill} fill="url(#pg)"/>
-      <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx={px(pts.length-1)} cy={py(last)} r="5" fill={color}/>
-    </svg>
+    <div>
+      <div className="bankroll-input-row">
+        <span style={{fontSize:12,color:'var(--text2)'}}>Capital de départ :</span>
+        <input
+          className="bankroll-input"
+          type="number"
+          placeholder="0€"
+          value={startCapital}
+          onChange={e=>setStartCapital(e.target.value)}
+        />
+        <span style={{fontSize:12,color:'var(--text3)'}}>€</span>
+        <span style={{marginLeft:'auto',fontFamily:'var(--font-head)',fontSize:14,fontWeight:800,color:last>=start?'var(--win)':'var(--loss)'}}>
+          {last >= 0 ? '+':''}{fmt(last - start)}€
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{display:'block',overflow:'visible'}}>
+        <defs>
+          <linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
+          </linearGradient>
+        </defs>
+        {/* zero/start line */}
+        <line x1={4} y1={zeroY} x2={W-4} y2={zeroY} stroke="var(--border2)" strokeWidth="1" strokeDasharray="4,3"/>
+        {/* area fill */}
+        <path d={area} fill="url(#bkg)"/>
+        {/* line */}
+        <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        {/* last point dot */}
+        <circle cx={px(pts.length-1)} cy={py(last)} r="5" fill={color}/>
+        {/* first label */}
+        <text x={4} y={H} fontSize="9" fill="var(--text3)" fontFamily="var(--font-head)">{pts[0].d}</text>
+        {/* last label */}
+        <text x={W-4} y={H} fontSize="9" fill="var(--text3)" fontFamily="var(--font-head)" textAnchor="end">{pts[pts.length-1].d}</text>
+        {/* current value label */}
+        <text x={px(pts.length-1)-6} y={py(last)-8} fontSize="10" fill={color} fontFamily="var(--font-head)" fontWeight="800" textAnchor="end">{fmt(last)}€</text>
+      </svg>
+    </div>
   );
 }
 
-// ─── DASHBOARD TAB ───────────────────────────────────────────────────────────
+// ─── SPORT HEATMAP ────────────────────────────────────────────────────────────
+function SportHeatmap({ bets }) {
+  const sports = [...new Set(bets.map(b=>b.sport).filter(Boolean))];
+  const data = sports.map(sp => {
+    const sub = bets.filter(b=>b.sport===sp);
+    const st = computeStats(sub);
+    return { sport:sp, count:sub.length, avgOdd:st.avgOdd, profit:st.profit, rate:st.rate };
+  }).sort((a,b) => b.profit - a.profit);
+
+  if (data.length === 0) return null;
+
+  const maxAbs = Math.max(...data.map(d=>Math.abs(d.profit)), 0.01);
+  const sportEmoji = { Football:"⚽", Tennis:"🎾", Basketball:"🏀", Rugby:"🏉", Hockey:"🏒", Baseball:"⚾" };
+
+  return (
+    <div>
+      {data.map((d,i) => {
+        const pct = (Math.abs(d.profit) / maxAbs) * 100;
+        const isPos = d.profit >= 0;
+        const bg = isPos
+          ? `rgba(87,255,158,${0.08 + (pct/100)*0.22})`
+          : `rgba(255,87,112,${0.08 + (pct/100)*0.22})`;
+        const textColor = isPos ? 'var(--win)' : 'var(--loss)';
+        const border = isPos ? 'rgba(87,255,158,0.2)' : 'rgba(255,87,112,0.18)';
+        return (
+          <div key={d.sport} className="heatmap-row">
+            <div className="heatmap-sport">{sportEmoji[d.sport]||'🎯'} {d.sport}</div>
+            <div className="heatmap-bar-track">
+              <div className="heatmap-bar-fill" style={{width:`${Math.max(pct,8)}%`,background:bg,border:`1px solid ${border}`}}>
+                <span className="heatmap-bar-text" style={{color:textColor}}>
+                  {d.count} paris · ×{fmt(d.avgOdd)} · {fmt(d.rate,0)}%
+                </span>
+              </div>
+            </div>
+            <div className="heatmap-stats">
+              <div className="heatmap-profit" style={{color:textColor}}>{fmtEuro(d.profit)}</div>
+              <div className="heatmap-meta">{d.count} paris</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── DASHBOARD TAB (Stats) ────────────────────────────────────────────────────
 function DashboardTab({ bets }) {
   const [pView, setPView] = useState("top");
   if(bets.length===0) return <div className="empty-state"><div className="e-icon">📊</div><div className="e-title">Aucune donnée</div><div className="e-sub">Importez vos premiers paris.</div></div>;
-  const s=computeStats(bets);
-  const safe=bets.filter(b=>b.tag==="SAFE"), fun=bets.filter(b=>b.tag==="FUN");
-  const wina=bets.filter(b=>b.bookmaker==="Winamax"), betc=bets.filter(b=>b.bookmaker==="Betclic");
-  const byStruct=["simple","combiné","mymatch"].map(st=>{const sub=bets.filter(b=>b.bet_structure===st);return{label:st,count:sub.length,roi:computeStats(sub).roi};});
-  const maxCt=Math.max(...byStruct.map(b=>b.count),1);
-  const players=getPlayerStats(bets);
-  const topP=[...players].sort((a,b)=>b.profit-a.profit).slice(0,5);
-  const worstP=[...players].sort((a,b)=>a.profit-b.profit).slice(0,5);
-  const shown=pView==="top"?topP:worstP;
+
+  const s = computeStats(bets);
+  const freebets = bets.filter(b=>b.is_freebet);
+
+  // 1. Main KPIs
+  // 2. Profit par catégorie (tous les tags)
+  const allTags = [...new Set(bets.map(b=>b.tag).filter(Boolean))];
+  const tagData = allTags.map(t=>{
+    const sub=bets.filter(b=>b.tag===t);
+    return { label:t, value: computeStats(sub).profit, count:sub.length };
+  }).filter(d=>d.count>0).sort((a,b)=>b.value-a.value);
+
+  // 3. Profit par sport
+  const sports = [...new Set(bets.map(b=>b.sport).filter(Boolean))];
+  const sportData = sports.map(sp=>{
+    const sub=bets.filter(b=>b.sport===sp);
+    const st=computeStats(sub);
+    return { label:sp, count:sub.length, avgOdd:st.avgOdd, profit:st.profit, rate:st.rate };
+  }).sort((a,b)=>b.profit-a.profit);
+
+  // 4. Odd range
+  const oddRanges = getOddRangeStats(bets);
+
+  // 5. Streak
+  const streaks = getStreaks(bets);
+
+  // 6. Players
+  const players = getPlayerStats(bets);
+  const topP = [...players].sort((a,b)=>b.profit-a.profit).slice(0,5);
+  const worstP = [...players].sort((a,b)=>a.profit-b.profit).slice(0,5);
+  const shown = pView==="top" ? topP : worstP;
+
   return (
     <div>
+      {/* ── BLOC 1 : KPIs ── */}
       <div className="section-title">Résumé global</div>
       <div className="stat-grid">
         <div className="stat-card"><div className="stat-label">Total paris</div><div className="stat-value neutral">{s.total}</div><div className="stat-sub">{s.wins} gagnés</div></div>
-        <div className="stat-card"><div className="stat-label">Réussite</div><div className={`stat-value ${s.rate>=50?'positive':'negative'}`}>{fmt(s.rate,0)}%</div><div className="stat-sub">sur {s.total}</div></div>
-        <div className="stat-card"><div className="stat-label">Total misé</div><div className="stat-value">{fmt(s.totalStake)}€</div></div>
-        <div className="stat-card"><div className="stat-label">ROI</div><div className={`stat-value ${s.roi>=0?'positive':'negative'}`}>{fmt(s.roi,0)}%</div></div>
-        <div className="stat-card full"><div className="stat-label">Profit total</div><div className={`stat-value ${s.profit>=0?'positive':'negative'}`} style={{fontSize:36}}>{fmtEuro(s.profit)}</div></div>
-      </div>
-      <div className="section-title">Profit dans le temps</div>
-      <div className="card" style={{padding:'14px 14px 10px'}}><ProfitLine bets={bets}/></div>
-      <div className="section-title">SAFE vs FUN</div>
-      <div className="card">
-        <div className="donut-wrap">
-          <DonutChart segments={[{value:safe.length,color:'var(--safe)'},{value:fun.length,color:'var(--fun)'}]} size={88}/>
-          <div className="donut-legend">
-            <div className="legend-item"><div className="legend-dot" style={{background:'var(--safe)'}}/><span>SAFE — {safe.length} paris · ROI {fmt(computeStats(safe).roi,0)}%</span></div>
-            <div className="legend-item"><div className="legend-dot" style={{background:'var(--fun)'}}/><span>FUN — {fun.length} paris · ROI {fmt(computeStats(fun).roi,0)}%</span></div>
-          </div>
+        <div className="stat-card"><div className="stat-label">Taux de réussite</div><div className={`stat-value ${s.rate>=50?'positive':'negative'}`}>{fmt(s.rate,0)}%</div><div className="stat-sub">sur {s.total} paris</div></div>
+        <div className="stat-card"><div className="stat-label">Total misé</div><div className="stat-value neutral">{fmt(s.totalStake,0)}€</div><div className="stat-sub">{freebets.length>0?`${freebets.length} freebets exclus`:''}</div></div>
+        <div className="stat-card"><div className="stat-label">Cote moyenne</div><div className="stat-value neutral">×{fmt(s.avgOdd)}</div></div>
+        <div className="stat-card full">
+          <div className="stat-label">Profit total</div>
+          <div className={`stat-value ${s.profit>=0?'positive':'negative'}`} style={{fontSize:36}}>{fmtEuro(s.profit)}</div>
+          {freebets.length>0 && <div className="stat-sub">dont {fmtEuro(freebets.reduce((a,b)=>a+betProfit(b),0))} de freebets</div>}
         </div>
       </div>
-      <div className="section-title">Par structure</div>
-      <div className="card"><div className="bar-chart">{byStruct.filter(b=>b.count>0).map(b=><div key={b.label} className="bar-row"><div className="bar-label" style={{textTransform:'capitalize'}}>{b.label}</div><div className="bar-track"><div className="bar-fill" style={{width:`${(b.count/maxCt)*100}%`,background:'var(--accent)'}}/></div><div className="bar-val" style={{color:b.roi>=0?'var(--win)':'var(--loss)'}}>{fmt(b.roi,0)}%</div></div>)}</div></div>
-      <div className="section-title">Par bookmaker</div>
-      <div className="card"><div className="bar-chart">{[{l:"Winamax",s:wina},{l:"Betclic",s:betc}].filter(x=>x.s.length>0).map(({l,s:sub})=>{const st=computeStats(sub);return(<div key={l} className="bar-row"><div className="bar-label">{l}</div><div className="bar-track"><div className="bar-fill" style={{width:`${(sub.length/bets.length)*100}%`,background:l==='Winamax'?'var(--loss)':'var(--accent2)'}}/></div><div className="bar-val" style={{color:st.roi>=0?'var(--win)':'var(--loss)'}}>{fmt(st.roi,0)}%</div></div>);})}</div></div>
 
-      {players.length > 0 && (
-        <>
-          <div className="section-title">Classement joueurs</div>
-          <div className="card">
-            <div className="tab-switch">
-              <button className={`tab-switch-btn ${pView==='top'?'active':''}`} onClick={()=>setPView('top')}>🏆 Top performers</button>
-              <button className={`tab-switch-btn ${pView==='worst'?'active':''}`} onClick={()=>setPView('worst')}>💀 Portent la poisse</button>
+      {/* ── BANKROLL ── */}
+      <div className="section-title">Évolution de la bankroll</div>
+      <div className="card" style={{padding:'14px 14px 10px'}}><BankrollChart bets={bets}/></div>
+
+      {/* ── BLOC 2 : Profit par catégorie ── */}
+      <div className="section-title">Profit par catégorie</div>
+      <div className="card">
+        <BarChart data={tagData.map(d=>({label:d.label,value:d.value}))} />
+      </div>
+
+      {/* ── BLOC 3 : Performance dans le temps ── */}
+      <div className="section-title">Performance dans le temps</div>
+      <div className="card" style={{padding:'14px 14px 10px'}}><WeeklyBarChart bets={bets}/></div>
+
+      {/* ── BLOC 4 : Heatmap par sport ── */}
+      {sportData.length > 0 && <>
+        <div className="section-title">Performances par sport</div>
+        <div className="card"><SportHeatmap bets={bets}/></div>
+      </>}
+
+      {/* ── BLOC 5 : Profit par tranche de cote ── */}
+      {oddRanges.length > 0 && <>
+        <div className="section-title">Profit par tranche de cote</div>
+        <div className="card" style={{padding:0,overflow:'hidden'}}>
+          <table className="data-table">
+            <thead><tr><th>Cote</th><th>Paris</th><th>Réussite</th><th>Profit</th></tr></thead>
+            <tbody>
+              {oddRanges.map((r,i)=>(
+                <tr key={i}>
+                  <td className="num">{r.label}</td>
+                  <td>{r.count}</td>
+                  <td>{fmt(r.rate,0)}%</td>
+                  <td className="num" style={{color:r.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(r.profit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>}
+
+      {/* ── BLOC 6 : Streak ── */}
+      {bets.length >= 2 && <>
+        <div className="section-title">Séries & Streaks</div>
+        <div className="card">
+          <div style={{display:'flex',gap:10,marginBottom:14}}>
+            <div style={{flex:1,background:'var(--surface2)',borderRadius:'var(--radius-sm)',padding:'10px 12px',textAlign:'center'}}>
+              <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4,fontWeight:600}}>Série actuelle</div>
+              <div style={{fontFamily:'var(--font-head)',fontSize:24,fontWeight:800,color:streaks.currentType==='win'?'var(--win)':'var(--loss)'}}>{streaks.current}×</div>
+              <div style={{fontSize:11,color:'var(--text2)'}}>{streaks.currentType==='win'?'Victoires':'Défaites'}</div>
             </div>
-            {shown.length === 0
-              ? <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'12px 0'}}>Pas assez de données</div>
-              : shown.map((p,i)=>(
-                <div key={p.player} className="player-row">
-                  <div className="player-rank" style={{color:i===0?(pView==='top'?'var(--accent)':'var(--loss)'):'var(--text3)'}}>{pView==='worst'?'💀':'🏆'}</div>
-                  <div className="player-avatar">⚽</div>
-                  <div className="player-info">
-                    <div className="player-name">{p.display}</div>
-                    <div className="player-meta" style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{background:'rgba(212,170,255,0.12)',color:'var(--scorer)',border:'1px solid rgba(212,170,255,0.2)',borderRadius:4,padding:'1px 5px',fontSize:10,fontFamily:'var(--font-head)',fontWeight:700,letterSpacing:'0.3px'}}>{p.player}</span>
-                      <span>{p.count} paris · {p.count>0?fmt(p.wins/p.count*100,0):0}% réussite</span>
-                    </div>
-                  </div>
-                  <div className="player-profit" style={{color:p.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(p.profit)}</div>
-                </div>
-              ))
-            }
+            <div style={{flex:1,background:'var(--surface2)',borderRadius:'var(--radius-sm)',padding:'10px 12px',textAlign:'center'}}>
+              <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4,fontWeight:600}}>Meilleure série</div>
+              <div style={{fontFamily:'var(--font-head)',fontSize:24,fontWeight:800,color:'var(--win)'}}>{streaks.bestWin}×</div>
+              <div style={{fontSize:11,color:'var(--text2)'}}>Victoires consécutives</div>
+            </div>
           </div>
-        </>
-      )}
+          {streaks.last10.length > 0 && (
+            <div>
+              <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:8,fontWeight:600}}>Derniers {streaks.last10.length} paris</div>
+              <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                {streaks.last10.map((r,i)=>(
+                  <div key={i} className={`streak-dot ${r}`}>{r==='win'?'W':'L'}</div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </>}
+
+      {/* ── BLOC 7 : Joueurs ── */}
+      {players.length > 0 && <>
+        <div className="section-title">Classement joueurs</div>
+        <div className="card">
+          <div className="tab-switch">
+            <button className={`tab-switch-btn ${pView==='top'?'active':''}`} onClick={()=>setPView('top')}>🏆 Top performers</button>
+            <button className={`tab-switch-btn ${pView==='worst'?'active':''}`} onClick={()=>setPView('worst')}>💀 Portent la poisse</button>
+          </div>
+          {shown.length === 0
+            ? <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'12px 0'}}>Pas assez de données</div>
+            : shown.map((p,i)=>(
+              <div key={p.player} className="player-row">
+                <div className="player-rank" style={{color:i===0?(pView==='top'?'var(--accent)':'var(--loss)'):'var(--text3)'}}>{pView==='worst'?'💀':'🏆'}</div>
+                <div className="player-avatar">⚽</div>
+                <div className="player-info">
+                  <div className="player-name">{p.display}</div>
+                  <div className="player-meta">{p.count} paris · {p.count>0?fmt(p.wins/p.count*100,0):0}% réussite</div>
+                </div>
+                <div className="player-profit" style={{color:p.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(p.profit)}</div>
+              </div>
+            ))
+          }
+        </div>
+      </>}
     </div>
   );
 }
@@ -1030,43 +1325,37 @@ function InsightsTab({ bets }) {
     const st=computeStats(sub);
     const labels={team:"Résultats d'équipe",player:"Paris buteurs",goals:"Paris buts",combo:"Combinés"};
     const icons={team:"⚽",player:"🎯",goals:"🥅",combo:"🎰"};
-    insights.push({icon:icons[cat],type:st.roi>=0?'positive':'negative',color:st.roi>=0?'var(--win)':'var(--loss)',title:labels[cat],sub:`${sub.length} paris · ${fmt(st.rate,0)}% réussite`,roi:`${st.roi>=0?'+':''}${fmt(st.roi,0)}%`});
+    insights.push({icon:icons[cat],type:st.profit>=0?'positive':'negative',color:st.profit>=0?'var(--win)':'var(--loss)',title:labels[cat],sub:`${sub.length} paris · ${fmt(st.rate,0)}% réussite`,value:fmtEuro(st.profit)});
   });
-  const safeS=computeStats(bets.filter(b=>b.tag==="SAFE")), funS=computeStats(bets.filter(b=>b.tag==="FUN"));
-  if(bets.filter(b=>b.tag==="SAFE").length>0) insights.push({icon:"🛡️",type:safeS.roi>=0?'positive':'negative',color:safeS.roi>=0?'var(--win)':'var(--loss)',title:"Paris SAFE",sub:`${fmt(safeS.rate,0)}% réussite`,roi:`${safeS.roi>=0?'+':''}${fmt(safeS.roi,0)}%`});
-  if(bets.filter(b=>b.tag==="FUN").length>0) insights.push({icon:"🎲",type:funS.roi>=0?'positive':'negative',color:funS.roi>=0?'var(--win)':'var(--loss)',title:"Paris FUN",sub:`${fmt(funS.rate,0)}% réussite`,roi:`${funS.roi>=0?'+':''}${fmt(funS.roi,0)}%`});
-  [{label:"Cotes 1–1.5",mn:0,mx:1.5},{label:"1.5–2",mn:1.5,mx:2},{label:"2–3",mn:2,mx:3},{label:"3–5",mn:3,mx:5},{label:"5+",mn:5,mx:999}].forEach(({label,mn,mx})=>{
-    const sub=bets.filter(b=>b.total_odd>mn&&b.total_odd<=mx); if(sub.length<2) return;
+  const allTags = [...new Set(bets.map(b=>b.tag).filter(Boolean))];
+  allTags.forEach(t=>{
+    const sub=bets.filter(b=>b.tag===t); if(sub.length<2) return;
     const st=computeStats(sub);
-    insights.push({icon:"📈",type:st.roi>=0?'positive':'negative',color:st.roi>=0?'var(--win)':'var(--loss)',title:`Cotes ${label}`,sub:`${sub.length} paris · ${fmt(st.rate,0)}% réussite`,roi:`${st.roi>=0?'+':''}${fmt(st.roi,0)}%`});
+    const icons={"SAFE":"🛡️","FUN":"🎲"};
+    insights.push({icon:icons[t]||"🏷️",type:st.profit>=0?'positive':'negative',color:st.profit>=0?'var(--win)':'var(--loss)',title:`Catégorie ${t}`,sub:`${sub.length} paris · ${fmt(st.rate,0)}% réussite`,value:fmtEuro(st.profit)});
   });
-  const sorted=insights.sort((a,b)=>Math.abs(parseFloat(b.roi))-Math.abs(parseFloat(a.roi)));
+  const sorted=insights.sort((a,b)=>Math.abs(parseFloat(b.value))-Math.abs(parseFloat(a.value)));
 
   return (
     <div>
-      {/* AI PANEL */}
       <div className="ai-panel">
         <div className="ai-panel-title">🤖 Analyse IA Personnalisée <span className="ai-premium-badge">PREMIUM</span></div>
-        <div className="ai-panel-sub">Claude analyse l'intégralité de tes {bets.length} paris : patterns, biais, forces, faiblesses — et te donne des recommandations concrètes pour améliorer ton ROI.</div>
+        <div className="ai-panel-sub">Claude analyse l'intégralité de tes {bets.length} paris : patterns, biais, forces, faiblesses.</div>
         <div className="ai-features">
           {["Identification de tes patterns de paris","Analyse de tes biais et erreurs récurrentes","Recommandations pour améliorer ton ROI","Profil de parieur et stratégie optimale"].map((f,i)=><div key={i} className="ai-feature"><span className="ai-feature-icon">✦</span>{f}</div>)}
         </div>
-
         {aiPhase==="locked" && <>
           <button className="ai-unlock-btn" onClick={()=>setAiPhase("unlocked")}>Débloquer l'analyse — 4,99€</button>
           <div className="ai-price">Paiement unique · Analyse illimitée sur ce compte</div>
         </>}
-
         {aiPhase==="unlocked" && <>
           <div style={{background:'rgba(87,255,158,0.08)',border:'1px solid rgba(87,255,158,0.2)',borderRadius:10,padding:'10px 12px',marginBottom:12,fontSize:13,color:'var(--win)'}}>✅ Accès débloqué — Lance ton analyse</div>
           <button className="btn-primary" onClick={handleAnalyze}>🚀 Lancer l'analyse complète</button>
         </>}
-
         {aiPhase==="loading" && <div style={{textAlign:'center',padding:'16px 0'}}>
           <div className="ai-typing"><div className="ai-dot"/><div className="ai-dot"/><div className="ai-dot"/></div>
           <div style={{fontSize:13,color:'var(--text2)',marginTop:8}}>Analyse de tes {bets.length} paris en cours…</div>
         </div>}
-
         {aiPhase==="done" && <div className="ai-response">
           <div className="ai-response-header">
             <div className="ai-avatar">✦</div>
@@ -1075,117 +1364,88 @@ function InsightsTab({ bets }) {
           </div>
           <div className="ai-response-body">{aiText}</div>
         </div>}
-
         {aiPhase==="error" && <>
           <div className="error-msg">❌ Erreur. Vérifiez votre connexion.</div>
           <button className="btn-secondary" onClick={()=>setAiPhase("unlocked")}>Réessayer</button>
         </>}
       </div>
-
       <hr className="divider"/>
       <div className="section-title">Insights automatiques</div>
-      <p style={{fontSize:13,color:'var(--text2)',marginBottom:16,lineHeight:1.6}}>Basés sur {bets.length} paris.</p>
       {sorted.map((ins,i)=>(
         <div key={i} className="insight-card">
           <div className={`insight-icon icon-${ins.type}`}>{ins.icon}</div>
           <div className="insight-text"><div className="insight-title">{ins.title}</div><div className="insight-sub">{ins.sub}</div></div>
-          <div className="insight-roi" style={{color:ins.color}}>{ins.roi}</div>
+          <div className="insight-roi" style={{color:ins.color}}>{ins.value}</div>
         </div>
       ))}
     </div>
   );
 }
 
-// ─── AUTH HOOK (Supabase) ─────────────────────────────────────────────────────
+// ─── AUTH HOOK ────────────────────────────────────────────────────────────────
 function useAuth() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-
   useEffect(() => {
-    // Session persists in localStorage — survives tab close/reopen
     const saved = localStorage.getItem("bettrack:user");
     if (saved) setUser(saved);
     setAuthReady(true);
   }, []);
-
   const login = async (username) => {
     const rows = await sbGet("users", `username=eq.${encodeURIComponent(username)}&select=username`);
     if (!rows.length) throw new Error("Pseudo introuvable. Crée un compte d'abord.");
     localStorage.setItem("bettrack:user", username);
     setUser(username);
   };
-
   const register = async (username, inviteCode) => {
-    if (inviteCode.trim().toUpperCase() !== INVITE_CODE)
-      throw new Error("Code d'invitation invalide.");
-    if (!username.trim() || username.length < 2)
-      throw new Error("Pseudo trop court (min 2 caractères).");
-    if (username.length > 20)
-      throw new Error("Pseudo trop long (max 20 caractères).");
-    if (!/^[a-zA-Z0-9_\-.]+$/.test(username))
-      throw new Error("Pseudo invalide — lettres, chiffres, _ - . uniquement.");
-    // Check if taken
+    if (inviteCode.trim().toUpperCase() !== INVITE_CODE) throw new Error("Code d'invitation invalide.");
+    if (!username.trim() || username.length < 2) throw new Error("Pseudo trop court (min 2 caractères).");
+    if (username.length > 20) throw new Error("Pseudo trop long (max 20 caractères).");
+    if (!/^[a-zA-Z0-9_\-.]+$/.test(username)) throw new Error("Pseudo invalide — lettres, chiffres, _ - . uniquement.");
     const existing = await sbGet("users", `username=eq.${encodeURIComponent(username)}&select=username`);
     if (existing.length) throw new Error("Ce pseudo est déjà pris.");
     await sbPost("users", { username });
     localStorage.setItem("bettrack:user", username);
     setUser(username);
   };
-
-  const logout = () => {
-    localStorage.removeItem("bettrack:user");
-    setUser(null);
-  };
-
+  const logout = () => { localStorage.removeItem("bettrack:user"); setUser(null); };
   return { user, authReady, login, register, logout };
 }
 
-// ─── USER BETS HOOK (Supabase) ────────────────────────────────────────────────
+// ─── USER BETS HOOK ───────────────────────────────────────────────────────────
 function useUserBets(username) {
   const [bets, setBetsState] = useState([]);
   const [storageReady, setStorageReady] = useState(false);
-
   useEffect(() => {
     if (!username) return;
     setStorageReady(false);
     (async () => {
       try {
         const rows = await sbGet("bets", `username=eq.${encodeURIComponent(username)}&order=created_at.desc&select=*`);
-        // Parse selections from jsonb
-        setBetsState(rows.map(r => ({ ...r, selections: r.selections || [] })));
+        setBetsState(rows.map(r => ({ ...r, selections: r.selections || [], is_freebet: r.is_freebet || false })));
       } catch { setBetsState([]); }
       setStorageReady(true);
     })();
   }, [username]);
-
-  // Add a single bet (called from UploadTab)
   const addBet = async (bet) => {
-    const row = { ...bet, username, id: undefined }; // let Supabase generate UUID
-    delete row.id;
+    const row = { ...bet, username }; delete row.id;
     const [saved] = await sbPost("bets", row);
-    setBetsState(prev => [{ ...saved, selections: saved.selections || [] }, ...prev]);
+    setBetsState(prev => [{ ...saved, selections: saved.selections || [], is_freebet: saved.is_freebet || false }, ...prev]);
   };
-
-  // setBets kept for compatibility (used as updater fn in UploadTab)
   const setBets = (updater) => {
-    if (typeof updater === "function") {
-      setBetsState(prev => updater(prev));
-    } else {
-      setBetsState(updater);
-    }
+    if (typeof updater === "function") setBetsState(prev => updater(prev));
+    else setBetsState(updater);
   };
-
   return { bets, storageReady, setBets, addBet };
 }
 
 // ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin, onRegister }) {
-  const [mode, setMode] = useState("login");   // "login" | "register"
+  const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const handleSubmit = async () => {
     setError("");
     if (!username.trim()) { setError("Entre ton pseudo."); return; }
@@ -1193,71 +1453,32 @@ function LoginScreen({ onLogin, onRegister }) {
     try {
       if (mode === "login") await onLogin(username.trim());
       else await onRegister(username.trim(), inviteCode.trim());
-    } catch (e) {
-      setError(e.message);
-    }
+    } catch (e) { setError(e.message); }
     setLoading(false);
   };
-
   return (
     <>
       <style>{CSS}</style>
       <div className="login-screen">
         <div className="login-logo">Bet<span>Track</span></div>
         <div className="login-tagline">Ton tracker de paris sportifs</div>
-
         <div className="login-card">
-          <div className="login-card-title">{mode === "login" ? "Connexion" : "Créer un compte"}</div>
-          <div className="login-card-sub">
-            {mode === "login"
-              ? "Entre ton pseudo pour accéder à tes paris."
-              : "Entre le code d'invitation et choisis ton pseudo."}
-          </div>
-
-          {mode === "register" && (
-            <>
-              <div className="invite-info">
-                🔑 Demande le <strong>code d'invitation</strong> à l'admin pour rejoindre.
-              </div>
-              <input
-                className="login-input"
-                placeholder="Code d'invitation"
-                value={inviteCode}
-                onChange={e => setInviteCode(e.target.value)}
-                autoCapitalize="characters"
-              />
-            </>
+          <div className="login-card-title">{mode==="login"?"Connexion":"Créer un compte"}</div>
+          <div className="login-card-sub">{mode==="login"?"Entre ton pseudo pour accéder à tes paris.":"Entre le code d'invitation et choisis ton pseudo."}</div>
+          {mode==="register" && (
+            <><div className="invite-info">🔑 Demande le <strong>code d'invitation</strong> à l'admin pour rejoindre.</div>
+            <input className="login-input" placeholder="Code d'invitation" value={inviteCode} onChange={e=>setInviteCode(e.target.value)} autoCapitalize="characters"/></>
           )}
-
-          <input
-            className="login-input"
-            placeholder="Ton pseudo (ex: alex_b)"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleSubmit()}
-            autoCapitalize="none"
-            autoCorrect="off"
-          />
-
+          <input className="login-input" placeholder="Ton pseudo (ex: alex_b)" value={username} onChange={e=>setUsername(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSubmit()} autoCapitalize="none" autoCorrect="off"/>
           {error && <div className="login-error">⚠️ {error}</div>}
-
           <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
-            {loading
-              ? <span style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8}}><span className="spinner" style={{width:16,height:16,borderWidth:2}}/> Chargement…</span>
-              : mode === "login" ? "Se connecter" : "Créer le compte"}
+            {loading ? <span style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8}}><span className="spinner" style={{width:16,height:16,borderWidth:2}}/> Chargement…</span> : mode==="login"?"Se connecter":"Créer le compte"}
           </button>
         </div>
-
         <div className="login-toggle">
-          {mode === "login"
-            ? <>Pas encore de compte ? <button onClick={() => { setMode("register"); setError(""); }}>Créer un compte</button></>
-            : <>Déjà un compte ? <button onClick={() => { setMode("login"); setError(""); }}>Se connecter</button></>
-          }
+          {mode==="login" ? <>Pas encore de compte ? <button onClick={()=>{setMode("register");setError("");}}>Créer un compte</button></> : <>Déjà un compte ? <button onClick={()=>{setMode("login");setError("");}}>Se connecter</button></>}
         </div>
-
-        <div style={{marginTop: 32, fontSize: 11, color: 'var(--text3)', textAlign: 'center', lineHeight: 1.6}}>
-          Winamax · Betclic · Analyse IA
-        </div>
+        <div style={{marginTop:32,fontSize:11,color:'var(--text3)',textAlign:'center',lineHeight:1.6}}>Winamax · Betclic · Analyse IA</div>
       </div>
     </>
   );
@@ -1268,24 +1489,15 @@ export default function App() {
   const { user, authReady, login, register, logout } = useAuth();
   const { bets, storageReady, setBets, addBet } = useUserBets(user);
   const [tab, setTab] = useState("upload");
-
   if (!authReady) return null;
   if (!user) return <LoginScreen onLogin={login} onRegister={register} />;
-
   if (!storageReady) return (
-    <>
-      <style>{CSS}</style>
-      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}>
-        <div style={{textAlign:'center'}}>
-          <div className="spinner" style={{margin:'0 auto 16px'}}/>
-          <div style={{fontFamily:'var(--font-head)',fontSize:14,color:'var(--text2)'}}>Chargement de tes paris…</div>
-        </div>
-      </div>
-    </>
+    <><style>{CSS}</style>
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}>
+      <div style={{textAlign:'center'}}><div className="spinner" style={{margin:'0 auto 16px'}}/><div style={{fontFamily:'var(--font-head)',fontSize:14,color:'var(--text2)'}}>Chargement de tes paris…</div></div>
+    </div></>
   );
-
   const initials = user.slice(0,2).toUpperCase();
-
   return (
     <>
       <style>{CSS}</style>
@@ -1294,9 +1506,7 @@ export default function App() {
           <div className="header-logo">Bet<span>Track</span></div>
           <div className="header-user">
             <div className="header-avatar">{initials}</div>
-            <div className="header-pill" style={{cursor:'pointer'}} onClick={logout} title="Se déconnecter">
-              {user} ↩
-            </div>
+            <div className="header-pill" style={{cursor:'pointer'}} onClick={logout} title="Se déconnecter">{user} ↩</div>
           </div>
         </div>
         <div className="scroll-area">
