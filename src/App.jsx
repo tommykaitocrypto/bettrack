@@ -240,6 +240,42 @@ const CSS = `
   .heatmap-stats { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; width: 56px; }
   .heatmap-profit { font-family: var(--font-head); font-size: 13px; font-weight: 800; }
   .heatmap-meta { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  /* collapsible stat section */
+  .stat-section { margin-bottom: 4px; }
+  .stat-section-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px 0 8px; user-select: none; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+  .stat-section-header:hover .stat-section-title { color: var(--accent); }
+  .stat-section-title { font-family: var(--font-head); font-size: 15px; font-weight: 800; letter-spacing: -0.3px; transition: color 0.15s; }
+  .stat-section-arrow { font-size: 11px; color: var(--text3); transition: transform 0.2s; }
+  .stat-section-arrow.open { transform: rotate(180deg); }
+  .stat-section-body { overflow: hidden; transition: max-height 0.3s ease; }
+  .stat-section-body.open { max-height: 2000px; padding-top: 12px; }
+  .stat-section-body.closed { max-height: 0; }
+  /* tag edit inline */
+  .tag-edit-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag-edit-chip { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; font-family: var(--font-head); border: 1.5px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .tag-edit-chip.active { border-color: var(--accent); background: rgba(200,255,87,0.12); color: var(--accent); }
+  /* multi-upload */
+  .multi-upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .multi-thumb { position: relative; border-radius: var(--radius-sm); overflow: hidden; background: var(--surface2); border: 1px solid var(--border); aspect-ratio: 9/16; }
+  .multi-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0.75; }
+  .multi-thumb-badge { position: absolute; top: 6px; left: 6px; background: rgba(10,10,15,0.8); border-radius: 8px; padding: 2px 7px; font-size: 10px; font-weight: 800; font-family: var(--font-head); color: var(--accent); }
+  .multi-thumb-remove { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,87,112,0.85); border: none; color: #fff; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .add-more-zone { border: 2px dashed var(--border2); border-radius: var(--radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; aspect-ratio: 9/16; font-size: 22px; color: var(--text3); position: relative; }
+  .add-more-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  /* step progress */
+  .step-progress { display: flex; gap: 6px; margin-bottom: 16px; }
+  .step-dot { flex: 1; height: 3px; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+  .step-dot.done { background: var(--accent); }
+  .step-dot.active { background: var(--accent2); }
+  /* manual import */
+  .manual-section { margin-bottom: 16px; }
+  /* simple stat row */
+  .seg-row { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+  .seg-row:last-child { border-bottom: none; }
+  .seg-label { flex: 1; font-size: 13px; font-family: var(--font-head); font-weight: 700; color: var(--text); }
+  .seg-count { font-size: 12px; color: var(--text3); min-width: 28px; text-align: center; }
+  .seg-rate { font-size: 12px; font-family: var(--font-head); font-weight: 700; min-width: 40px; text-align: center; }
+  .seg-profit { font-size: 13px; font-family: var(--font-head); font-weight: 800; min-width: 70px; text-align: right; }
 `;
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
@@ -262,6 +298,11 @@ async function sbPost(table, body) {
 async function sbDelete(table, params = "") {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, { method: "DELETE", headers: sbHeaders });
   if (!r.ok) throw new Error(await r.text());
+}
+async function sbPatch(table, params = "", body = {}) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, { method: "PATCH", headers: { ...sbHeaders, "Prefer": "return=representation" }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
 }
 
 // ─── COMPETITION NORMALISATION MAP ───────────────────────────────────────────
@@ -404,6 +445,46 @@ function getStreaks(bets) {
   return { current: cur, currentType: curType, bestWin, bestLoss, last10 };
 }
 
+// Normalize a raw selection_type into one of: résultat | buteur | score exact | autre
+function normalizeSelType(raw) {
+  if (!raw) return "autre";
+  const r = raw.toLowerCase();
+  if (r.includes("buteur") || r.includes("joueur décisif") || r.includes("marquer") || r.includes("scorer")) return "buteur";
+  if (r.includes("score exact") || r.includes("score précis") || r.includes("correct score")) return "score exact";
+  if (r.includes("résultat") || r.includes("victoire") || r.includes("nul") || r.includes("gagnant") || r.includes("1x2") || r.includes("vainqueur") || r.includes("mi-temps") || r.includes("double chance") || r.includes("nombre de points") || r.includes("plus de") || r.includes("moins de") || r.includes("paliers") || r.includes("rebonds") || r.includes("passes")) return "résultat";
+  return "autre";
+}
+
+// Format a monthKey "YYYY-MM" into "janv-23"
+const MONTH_SHORT = ["janv","févr","mars","avr","mai","juin","juil","août","sept","oct","nov","déc"];
+function fmtMonthLabel(key) {
+  const [y, m] = key.split("-");
+  return `${MONTH_SHORT[parseInt(m,10)-1]}-${y.slice(2)}`;
+}
+
+// Get all individual selections across all bets (expanded)
+function getAllSelections(bets) {
+  const result = [];
+  bets.forEach(bet => {
+    (bet.selections || []).forEach(sel => {
+      result.push({ ...sel, _bet: bet, _selType: normalizeSelType(sel.selection_type), _competition: bet.competition || "" });
+    });
+  });
+  return result;
+}
+
+// Stats on a set of selections grouped by a key
+function getSelGroupStats(selections, keyFn) {
+  const map = {};
+  selections.forEach(sel => {
+    const k = keyFn(sel) || "—";
+    if (!map[k]) map[k] = { label: k, total: 0, wins: 0 };
+    map[k].total++;
+    if (sel._bet.result === "win") map[k].wins++;
+  });
+  return Object.values(map).map(g => ({ ...g, rate: g.total > 0 ? (g.wins/g.total)*100 : 0 })).sort((a,b)=>b.total-a.total);
+}
+
 // Odd range buckets
 function getOddRangeStats(bets) {
   const ranges = [
@@ -461,6 +542,12 @@ Si une sélection affiche "Non" : inclus-le dans selection_type ET mets negated:
 Pour les paris MyMatch : le badge numérique bleu (ex: 10, 42, 67) est le NUMÉRO DE SÉLECTION MyMatch, PAS la cote.
 La cote totale est le multiplicateur flottant (ex: 3.50, 10.25). Si elle n'est pas visible, mets null.
 
+━━━ RÈGLE 7 — TYPE DE SÉLECTION ━━━
+Pour chaque sélection, ajoute un champ "sel_type" parmi : "résultat" | "buteur" | "score exact" | "autre"
+- résultat : victoire équipe, nul, 1X2, double chance, nombre de points/rebonds/passes (joueur stats)
+- buteur : marquer un but, joueur décisif, scorer
+- score exact : score précis du match
+
 ━━━ FORMAT JSON ━━━
 JSON valide sans backticks :
 {
@@ -479,7 +566,7 @@ JSON valide sans backticks :
   "actual_win": 0.0,
   "result": "win|loss",
   "is_freebet": false,
-  "selections": [{"team":"","player":"B.Barcola","player_display":"Bradley Barcola","selection_type":"joueur décisif","odd":1.38,"negated":false}]
+  "selections": [{"team":"","player":"B.Barcola","player_display":"Bradley Barcola","selection_type":"joueur décisif","sel_type":"buteur","odd":1.38,"negated":false}]
 }`,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
@@ -502,13 +589,55 @@ JSON valide sans backticks :
       if (sel.negated && !sel.selection_type?.includes("— Non")) {
         sel.selection_type = (sel.selection_type || "") + " — Non";
       }
+      // Normalize sel_type if not already set by AI
+      if (!sel.sel_type) sel.sel_type = normalizeSelType(sel.selection_type);
       return sel;
     });
   }
   return raw;
 }
 
-function extractJSON(text) {
+// Analyse several screenshots and merge duplicates (same bet split across 2 images)
+async function analyzeMultipleScreenshots(files) {
+  const results = [];
+  for (const file of files) {
+    const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(file); });
+    try {
+      const data = await analyzeScreenshot(b64, file.type);
+      results.push({ data, file, previewUrl: URL.createObjectURL(file), ok: true });
+    } catch(e) {
+      results.push({ data: null, file, previewUrl: URL.createObjectURL(file), ok: false, error: e.message });
+    }
+  }
+  // Merge bets that are the same (same bet_ref, or same match+date with one missing ref)
+  const merged = [];
+  const used = new Set();
+  for (let i = 0; i < results.length; i++) {
+    if (used.has(i) || !results[i].ok) { if (!results[i].ok) merged.push(results[i]); continue; }
+    let base = { ...results[i] };
+    for (let j = i+1; j < results.length; j++) {
+      if (used.has(j) || !results[j].ok) continue;
+      const a = base.data, b = results[j].data;
+      const sameRef = a.bet_ref && b.bet_ref && a.bet_ref === b.bet_ref;
+      const sameMatch = a.team_1 && b.team_1 && a.team_1 === b.team_1 && a.team_2 === b.team_2 && a.date === b.date;
+      if (sameRef || sameMatch) {
+        // Merge: keep most complete version
+        const merged_data = { ...a };
+        if (!merged_data.bet_ref && b.bet_ref) merged_data.bet_ref = b.bet_ref;
+        if ((!merged_data.selections || merged_data.selections.length === 0) && b.selections?.length > 0) merged_data.selections = b.selections;
+        if (merged_data.selections && b.selections && b.selections.length > merged_data.selections.length) merged_data.selections = b.selections;
+        if (!merged_data.total_odd && b.total_odd) merged_data.total_odd = b.total_odd;
+        if (!merged_data.stake && b.stake) merged_data.stake = b.stake;
+        if (!merged_data.actual_win && b.actual_win) merged_data.actual_win = b.actual_win;
+        base = { ...base, data: merged_data, merged: true };
+        used.add(j);
+      }
+    }
+    used.add(i);
+    merged.push(base);
+  }
+  return merged;
+}
   let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   try { return JSON.parse(s); } catch {}
   const start = s.indexOf("{");
@@ -574,11 +703,24 @@ async function runAIAnalysis(bets) {
 }
 
 // ─── BET DETAIL MODAL ────────────────────────────────────────────────────────
-function BetDetailModal({ bet, onClose, onDelete }) {
+function BetDetailModal({ bet, onClose, onDelete, onUpdate, allTags }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editingTag, setEditingTag] = useState(false);
+  const [newTag, setNewTag] = useState(bet.tag || "SAFE");
+  const [customTagInput, setCustomTagInput] = useState("");
+  const [savingTag, setSavingTag] = useState(false);
   const profit = betProfit(bet);
   const isCombo = bet.bet_structure === "combiné" || bet.bet_structure === "mymatch";
   const tagColor = bet.tag === "SAFE" ? "var(--safe)" : bet.tag === "FUN" ? "var(--fun)" : "var(--accent2)";
+
+  const handleSaveTag = async () => {
+    if (!onUpdate) return;
+    setSavingTag(true);
+    const finalTag = customTagInput.trim() ? customTagInput.trim().toUpperCase() : newTag;
+    await onUpdate(bet.id, { tag: finalTag });
+    setEditingTag(false); setSavingTag(false); setCustomTagInput("");
+  };
+
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-sheet">
@@ -587,10 +729,29 @@ function BetDetailModal({ bet, onClose, onDelete }) {
         <div className="modal-header">
           <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
             <div className={`result-chip ${bet.result==='win'?'result-win':'result-loss'}`}>{bet.result==='win'?'🏆 Gagné':'❌ Perdu'}</div>
-            <span style={{padding:'5px 10px',borderRadius:20,border:`1px solid ${tagColor}33`,background:`${tagColor}18`,fontSize:11,fontWeight:700,fontFamily:'var(--font-head)',color:tagColor}}>{bet.tag}</span>
+            <span onClick={()=>setEditingTag(t=>!t)} style={{padding:'5px 10px',borderRadius:20,border:`1px solid ${tagColor}33`,background:`${tagColor}18`,fontSize:11,fontWeight:700,fontFamily:'var(--font-head)',color:tagColor,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+              {bet.tag} <span style={{fontSize:9,opacity:0.7}}>✎</span>
+            </span>
             {bet.is_freebet && <span className="freebet-tag">🎁 Freebet</span>}
             {hasScorer(bet) && <span style={{padding:'5px 10px',borderRadius:20,border:'1px solid rgba(212,170,255,0.3)',background:'rgba(212,170,255,0.1)',fontSize:11,fontWeight:700,fontFamily:'var(--font-head)',color:'var(--scorer)'}}>⚽ Buteur</span>}
           </div>
+          {editingTag && (
+            <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:'12px',marginBottom:10}}>
+              <div style={{fontSize:11,color:'var(--text2)',fontWeight:600,marginBottom:8,textTransform:'uppercase',letterSpacing:'0.5px'}}>Modifier la catégorie</div>
+              <div className="tag-edit-row">
+                {["SAFE","FUN",...(allTags||[]).filter(t=>t!=="SAFE"&&t!=="FUN")].map(t=>(
+                  <button key={t} className={`tag-edit-chip ${newTag===t&&!customTagInput?'active':''}`} onClick={()=>{setNewTag(t);setCustomTagInput("");}}>{t}</button>
+                ))}
+              </div>
+              <input className="field-input" style={{marginTop:8,fontSize:12,padding:'7px 10px'}} placeholder="Nouvelle catégorie…" value={customTagInput} onChange={e=>setCustomTagInput(e.target.value.toUpperCase())} />
+              <div style={{display:'flex',gap:6,marginTop:8}}>
+                <button onClick={handleSaveTag} disabled={savingTag} style={{flex:1,padding:'8px',background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:8,fontSize:12,fontWeight:800,cursor:'pointer',fontFamily:'var(--font-head)'}}>
+                  {savingTag?"…":"✓ Enregistrer"}
+                </button>
+                <button onClick={()=>{setEditingTag(false);setCustomTagInput("");}} style={{flex:1,padding:'8px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text2)',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'var(--font-head)'}}>Annuler</button>
+              </div>
+            </div>
+          )}
           <div className="modal-title">{bet.team_1} vs {bet.team_2}</div>
           <div className="modal-sub">{bet.competition} · {bet.date} à {bet.heure} · {bet.bookmaker}</div>
         </div>
@@ -616,6 +777,7 @@ function BetDetailModal({ bet, onClose, onDelete }) {
                         <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,flexWrap:'wrap'}}>
                           <div className="sel-team">{sel.team}</div>
                           {isNeg && <span style={{background:'rgba(255,153,87,0.15)',color:'var(--fun)',border:'1px solid rgba(255,153,87,0.35)',borderRadius:5,fontSize:10,fontWeight:800,padding:'1px 6px',fontFamily:'var(--font-head)'}}>NON ↩</span>}
+                          {sel.sel_type && sel.sel_type !== "autre" && <span style={{background:'rgba(87,200,255,0.1)',border:'1px solid rgba(87,200,255,0.2)',color:'var(--accent2)',borderRadius:5,fontSize:10,fontWeight:700,padding:'1px 6px',fontFamily:'var(--font-head)'}}>{sel.sel_type}</span>}
                         </div>
                         <div className="sel-type">{sel.selection_type}</div>
                         {sel.player && <div style={{marginTop:5}}><span className="scorer-tag">⚽ {sel.player_display||sel.player}</span></div>}
@@ -662,242 +824,359 @@ function BetDetailModal({ bet, onClose, onDelete }) {
   );
 }
 
-// ─── UPLOAD TAB ──────────────────────────────────────────────────────────────
-function UploadTab({ setBets, addBet, bets }) {
-  const [phase, setPhase] = useState("idle");
-  const [previewUrl, setPreviewUrl] = useState(null);
+// ─── MANUAL IMPORT FORM ───────────────────────────────────────────────────────
+function ManualImportForm({ bets, addBet, existingTags, onDone, onCancel }) {
+  const today = new Date().toISOString().split("T")[0];
+  const [d, setD] = useState({
+    sport: "", bookmaker: "Winamax", competition: "", team_1: "", team_2: "",
+    date: today, heure: "", bet_structure: "simple", result: "win",
+    total_odd: "", stake: "", actual_win: "", tag: "SAFE", customTag: "", is_freebet: false,
+    bet_ref: ""
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const upd = (k,v) => setD(p => ({...p, [k]:v}));
+  const finalTag = d.customTag.trim() ? d.customTag.trim().toUpperCase() : d.tag;
+
+  const handleSave = async () => {
+    if (!d.sport || !d.total_odd || !d.stake || !d.result) { setError("Remplis au moins : sport, cote, mise, résultat."); return; }
+    setSaving(true);
+    try {
+      const actualWin = d.actual_win !== "" ? parseFloat(d.actual_win) : (d.result==="win" ? parseFloat(d.stake)*parseFloat(d.total_odd) : 0);
+      await addBet({ ...d, tag: finalTag, total_odd: parseFloat(d.total_odd), stake: parseFloat(d.stake), actual_win: actualWin, selections: [], bet_ref: d.bet_ref||null });
+      onDone();
+    } catch(e) { setError("Erreur : " + (e.message||"")); }
+    setSaving(false);
+  };
+  return (
+    <div>
+      <div className="validation-title" style={{marginBottom:16}}>✏️ Import manuel</div>
+      <div className="card">
+        <div className="card-title">Match</div>
+        <div className="field-row">
+          <div className="field-group"><div className="field-label">Sport</div><input className="field-input" value={d.sport} onChange={e=>upd("sport",e.target.value)} placeholder="Football" /></div>
+          <div className="field-group"><div className="field-label">Bookmaker</div><select className="field-input" value={d.bookmaker} onChange={e=>upd("bookmaker",e.target.value)}><option>Winamax</option><option>Betclic</option></select></div>
+        </div>
+        <div className="field-group"><div className="field-label">Compétition</div><input className="field-input" value={d.competition} onChange={e=>upd("competition",e.target.value)} placeholder="Ligue 1" /></div>
+        <div className="field-row">
+          <div className="field-group"><div className="field-label">Équipe 1</div><input className="field-input" value={d.team_1} onChange={e=>upd("team_1",e.target.value)} /></div>
+          <div className="field-group"><div className="field-label">Équipe 2</div><input className="field-input" value={d.team_2} onChange={e=>upd("team_2",e.target.value)} /></div>
+        </div>
+        <div className="field-row">
+          <div className="field-group"><div className="field-label">Date</div><input className="field-input" type="date" value={d.date} onChange={e=>upd("date",e.target.value)} /></div>
+          <div className="field-group"><div className="field-label">Heure</div><input className="field-input" value={d.heure} onChange={e=>upd("heure",e.target.value)} placeholder="20:45" /></div>
+        </div>
+        <div className="field-group"><div className="field-label">Référence (optionnel)</div><input className="field-input" value={d.bet_ref} onChange={e=>upd("bet_ref",e.target.value)} /></div>
+      </div>
+      <div className="card">
+        <div className="card-title">Paris</div>
+        <div className="field-row">
+          <div className="field-group"><div className="field-label">Structure</div><select className="field-input" value={d.bet_structure} onChange={e=>upd("bet_structure",e.target.value)}><option value="simple">Simple</option><option value="combiné">Combiné</option><option value="mymatch">MyMatch</option></select></div>
+          <div className="field-group"><div className="field-label">Résultat</div><select className="field-input" value={d.result} onChange={e=>upd("result",e.target.value)}><option value="win">Gagné</option><option value="loss">Perdu</option></select></div>
+        </div>
+        <div className="field-row">
+          <div className="field-group"><div className="field-label">Cote</div><input className="field-input" type="number" step="0.01" value={d.total_odd} onChange={e=>upd("total_odd",e.target.value)} /></div>
+          <div className="field-group"><div className="field-label">Mise (€)</div><input className="field-input" type="number" step="0.5" value={d.stake} onChange={e=>upd("stake",e.target.value)} /></div>
+        </div>
+        <div className="field-group"><div className="field-label">Gain réel (€) <span style={{color:'var(--text3)',fontWeight:400}}>auto si vide</span></div><input className="field-input" type="number" step="0.01" value={d.actual_win} onChange={e=>upd("actual_win",e.target.value)} /></div>
+        <label className={`freebet-toggle ${d.is_freebet?'active':''}`} onClick={()=>upd("is_freebet",!d.is_freebet)}>
+          <div className={`freebet-box ${d.is_freebet?'checked':''}`}>{d.is_freebet && <span style={{color:'#0a0a0f',fontSize:11,fontWeight:800}}>✓</span>}</div>
+          <div><div className="freebet-toggle-label">🎁 Freebet</div></div>
+        </label>
+      </div>
+      <div className="card">
+        <div className="card-title">Catégorie</div>
+        <div className="tag-selector">
+          {["SAFE","FUN",...existingTags].map(t => <button key={t} className={`tag-btn ${d.tag===t&&!d.customTag?'selected':''}`} onClick={()=>upd("tag",t)}>{t}</button>)}
+        </div>
+        <input className="field-input" placeholder="Nouvelle catégorie…" value={d.customTag} onChange={e=>upd("customTag",e.target.value.toUpperCase())} />
+      </div>
+      {error && <div className="error-msg">❌ {error}</div>}
+      <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving?"Enregistrement…":"Enregistrer"}</button>
+      <button className="btn-secondary" onClick={onCancel}>Annuler</button>
+    </div>
+  );
+}
+
+// ─── UPLOAD TAB ───────────────────────────────────────────────────────────────
+function UploadTab({ setBets, addBet, bets, updateBet }) {
+  const [mode, setMode] = useState("idle"); // idle | multi | manual
+  // Multi-screenshot state
+  const [files, setFiles] = useState([]); // [{file, previewUrl}]
+  const [analyzing, setAnalyzing] = useState(false);
+  const [queue, setQueue] = useState([]); // [{data, previewUrl, merged, ok, error}]
+  const [queueIdx, setQueueIdx] = useState(0);
+  // Per-item validation state
   const [extracted, setExtracted] = useState(null);
   const [tag, setTag] = useState("SAFE");
   const [customTag, setCustomTag] = useState("");
   const [isFreebet, setIsFreebet] = useState(false);
-  const [error, setError] = useState("");
-  const [drag, setDrag] = useState(false);
   const [compDetect, setCompDetect] = useState(null);
   const [detectingComp, setDetectingComp] = useState(false);
   const [dupWarning, setDupWarning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedCount, setSavedCount] = useState(0);
+  const [error, setError] = useState("");
   const fileRef = useRef();
+  const addFileRef = useRef();
 
-  // Derive unique custom tags from existing bets
   const existingTags = [...new Set(bets.map(b=>b.tag).filter(t=>t && t!=="SAFE" && t!=="FUN"))];
 
-  const handleFile = useCallback(async (file) => {
-    if (!file?.type.startsWith("image/")) return;
-    setPreviewUrl(URL.createObjectURL(file));
-    setPhase("analyzing");
-    setError(""); setCompDetect(null); setDupWarning(false);
+  // ── File management ──────────────────────────────────────────────────────────
+  const addFiles = (newFiles) => {
+    const arr = Array.from(newFiles).filter(f => f.type.startsWith("image/"));
+    setFiles(prev => {
+      const combined = [...prev, ...arr.map(f => ({ file: f, previewUrl: URL.createObjectURL(f) }))];
+      return combined.slice(0, 5);
+    });
+  };
+
+  const removeFile = (idx) => setFiles(prev => prev.filter((_,i) => i !== idx));
+
+  // ── Analyse ──────────────────────────────────────────────────────────────────
+  const handleAnalyze = async () => {
+    if (files.length === 0) return;
+    setAnalyzing(true); setError("");
     try {
-      const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(file); });
-      const data = await analyzeScreenshot(b64, file.type);
-      setExtracted(data);
-      // Auto-detect freebet from OCR
-      if (data.is_freebet) setIsFreebet(true);
-      setPhase("validating");
-      if (data.bet_ref) {
-        const isDup = bets.some(b => b.bet_ref && b.bet_ref === data.bet_ref);
-        if (isDup) setDupWarning(true);
-      }
-      if (data.team_1 && data.team_2) {
-        setDetectingComp(true);
-        try {
-          const comp = await detectCompetition(data.team_1, data.team_2, data.date);
-          setCompDetect(comp);
-          setExtracted(prev => ({ ...prev, competition: normalizeCompetition(comp.competition) }));
-        } catch {}
-        setDetectingComp(false);
-      }
-    } catch(e) {
-      setError("Analyse impossible. " + (e.message?.includes("JSON") || e.message?.includes("token")
-        ? "Claude n'a pas retourné un format valide. Réessayez."
-        : "Vérifiez votre connexion.\n" + (e.message||"")));
-      setPhase("error");
+      const results = await analyzeMultipleScreenshots(files.map(f=>f.file));
+      setQueue(results);
+      setQueueIdx(0);
+      loadQueueItem(results, 0);
+    } catch(e) { setError("Erreur d'analyse : " + e.message); }
+    setAnalyzing(false);
+  };
+
+  const loadQueueItem = (q, idx) => {
+    const item = q[idx];
+    if (!item || !item.ok) return;
+    const data = item.data;
+    setExtracted(data);
+    setIsFreebet(!!data.is_freebet);
+    setTag("SAFE"); setCustomTag(""); setCompDetect(null);
+    const isDup = data.bet_ref && bets.some(b => b.bet_ref === data.bet_ref);
+    setDupWarning(isDup);
+    if (data.team_1 && data.team_2) {
+      setDetectingComp(true);
+      detectCompetition(data.team_1, data.team_2, data.date).then(comp => {
+        setCompDetect(comp);
+        setExtracted(prev => prev ? ({ ...prev, competition: normalizeCompetition(comp.competition) }) : prev);
+      }).catch(()=>{}).finally(() => setDetectingComp(false));
     }
-  }, [bets]);
+  };
 
-  const upd = (k,v) => setExtracted(p => ({...p, [k]:v}));
+  const upd = (k,v) => setExtracted(p => p ? ({...p, [k]:v}) : p);
 
-  const handleConfirm = async (force = false) => {
+  const handleConfirm = async (force=false) => {
     if (!force && dupWarning) return;
     setSaving(true);
     const finalTag = customTag.trim() ? customTag.trim().toUpperCase() : tag;
     try {
-      // Freebet: if win, keep actual_win as-is (already correct). stake stored as original freebet value for reference.
       await addBet({ ...extracted, tag: finalTag, is_freebet: isFreebet });
-      setPhase("success");
-    } catch(e) {
-      setError("Erreur d'enregistrement : " + (e.message || ""));
-    }
+      setSavedCount(c => c+1);
+      const nextIdx = queueIdx + 1;
+      if (nextIdx < queue.length) {
+        setQueueIdx(nextIdx);
+        loadQueueItem(queue, nextIdx);
+      } else {
+        setMode("done");
+      }
+    } catch(e) { setError("Erreur d'enregistrement : " + (e.message||"")); }
     setSaving(false);
   };
 
+  const handleSkip = () => {
+    const nextIdx = queueIdx + 1;
+    if (nextIdx < queue.length) { setQueueIdx(nextIdx); loadQueueItem(queue, nextIdx); }
+    else setMode("done");
+  };
+
   const reset = () => {
-    setPhase("idle"); setPreviewUrl(null); setExtracted(null); setTag("SAFE");
-    setCustomTag(""); setIsFreebet(false);
-    setError(""); setCompDetect(null); setDetectingComp(false); setDupWarning(false); setSaving(false);
+    setMode("idle"); setFiles([]); setQueue([]); setQueueIdx(0); setExtracted(null);
+    setTag("SAFE"); setCustomTag(""); setIsFreebet(false); setCompDetect(null);
+    setDetectingComp(false); setDupWarning(false); setSaving(false); setSavedCount(0); setError("");
     if(fileRef.current) fileRef.current.value="";
   };
 
-  if (phase === "success") return (
+  // ── Render: DONE ─────────────────────────────────────────────────────────────
+  if (mode === "done") return (
     <div className="success-screen">
       <div className="success-icon">✅</div>
-      <div className="success-title">Pari enregistré !</div>
+      <div className="success-title">{savedCount} pari{savedCount>1?"s":""} enregistré{savedCount>1?"s":""}!</div>
       <div className="success-sub">Dashboard et insights mis à jour.</div>
-      <button className="btn-primary" style={{marginTop:24,maxWidth:240}} onClick={reset}>Importer un autre pari</button>
+      <button className="btn-primary" style={{marginTop:24,maxWidth:240}} onClick={reset}>Importer d'autres paris</button>
     </div>
   );
 
-  if (phase === "idle") return (
-    <div>
-      <div style={{marginBottom:16}}>
-        <div className="section-title">Importer un pari</div>
-        <p style={{fontSize:13,color:'var(--text2)',lineHeight:1.6}}>Capture d'écran d'un pari terminé — Winamax ou Betclic.</p>
-      </div>
-      <div className={`upload-zone ${drag?'drag':''}`} onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0]);}} onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)}>
-        <input ref={fileRef} type="file" accept="image/*" onChange={e=>handleFile(e.target.files[0])} />
-        <div className="upload-icon">📲</div>
-        <div className="upload-title">Importer une capture</div>
-        <div className="upload-sub">Appuyer pour choisir depuis la galerie</div>
-        <div className="bookmaker-badges"><span className="badge badge-winamax">Winamax</span><span className="badge badge-betclic">Betclic</span></div>
-      </div>
-    </div>
-  );
-
-  if (phase === "analyzing") return (
-    <div className="image-preview-wrap"><img src={previewUrl} alt="" />
-      <div className="analyzing-overlay"><div className="spinner"/><div className="analyzing-text">Analyse en cours…</div><div className="analyzing-sub">Extraction des données du pari</div></div>
-    </div>
-  );
-
-  if (phase === "error") return (
-    <div><div className="image-preview-wrap"><img src={previewUrl} alt="" style={{opacity:0.4}} /></div><div className="error-msg">❌ {error}</div><button className="btn-secondary" onClick={reset}>Réessayer</button></div>
-  );
-
-  if (phase === "validating" && extracted) return (
-    <div>
-      <div className="image-preview-wrap"><img src={previewUrl} alt="" /></div>
-      <div className="validation-header">
-        <div className="validation-title">Vérification</div>
-        <div className={`result-chip ${extracted.result==='win'?'result-win':'result-loss'}`}>{extracted.result==='win'?'🏆 Gagné':'❌ Perdu'}</div>
-      </div>
-
-      {dupWarning && (
-        <div style={{background:'rgba(255,153,87,0.1)',border:'1px solid rgba(255,153,87,0.35)',borderRadius:'var(--radius-sm)',padding:'12px 14px',marginBottom:12}}>
-          <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,color:'var(--fun)',marginBottom:4}}>⚠️ Pari potentiellement déjà enregistré</div>
-          <div style={{fontSize:12,color:'var(--text2)',lineHeight:1.5,marginBottom:10}}>La référence <strong style={{color:'var(--text)',fontFamily:'var(--font-head)'}}>{extracted.bet_ref}</strong> est déjà dans ta base.</div>
-          <div style={{display:'flex',gap:8}}>
-            <button onClick={()=>handleConfirm(true)} disabled={saving} style={{flex:1,padding:'8px',background:'rgba(255,153,87,0.15)',border:'1px solid rgba(255,153,87,0.4)',borderRadius:8,color:'var(--fun)',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'var(--font-head)'}}>
-              {saving?"Enregistrement…":"Enregistrer quand même"}
-            </button>
-            <button onClick={reset} style={{flex:1,padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text2)',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'var(--font-head)'}}>Annuler</button>
-          </div>
+  // ── Render: VALIDATING queue item ─────────────────────────────────────────────
+  if (mode === "multi" && queue.length > 0 && extracted) {
+    const currentItem = queue[queueIdx];
+    return (
+      <div>
+        {/* Step progress */}
+        <div className="step-progress">
+          {queue.map((_,i) => <div key={i} className={`step-dot ${i<queueIdx?'done':i===queueIdx?'active':''}`}/>)}
         </div>
-      )}
-
-      {(detectingComp || compDetect) && (
-        <div className="competition-detect">
-          <div className="competition-detect-icon">{detectingComp?'🔍':'🏆'}</div>
-          <div>
-            {detectingComp
-              ? <div style={{fontSize:12,color:'var(--accent2)'}}>Recherche de la compétition…</div>
-              : <><div className="competition-detect-label">Compétition détectée {compDetect.confidence==='high'?'· Haute confiance':''}</div><div className="competition-detect-name">{compDetect.competition}</div></>
-            }
-          </div>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
+          <div className="validation-title">Pari {queueIdx+1}/{queue.length}</div>
+          {currentItem.merged && <span style={{background:'rgba(87,200,255,0.12)',border:'1px solid rgba(87,200,255,0.3)',borderRadius:8,padding:'3px 8px',fontSize:10,fontWeight:700,color:'var(--accent2)',fontFamily:'var(--font-head)'}}>🔗 Fusionné</span>}
+          <div className={`result-chip ${extracted.result==='win'?'result-win':'result-loss'}`} style={{marginLeft:'auto'}}>{extracted.result==='win'?'🏆 Gagné':'❌ Perdu'}</div>
         </div>
-      )}
 
-      <div className="card">
-        <div className="card-title">Informations générales</div>
-        {extracted.bet_ref && (
-          <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px',marginBottom:12}}>
-            <span style={{fontSize:11,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600,flexShrink:0}}>Réf</span>
-            <span style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,color:'var(--text2)',flex:1}}>{extracted.bet_ref}</span>
+        {currentItem.previewUrl && <div className="image-preview-wrap" style={{maxHeight:180,overflow:'hidden'}}><img src={currentItem.previewUrl} alt="" /></div>}
+
+        {dupWarning && (
+          <div style={{background:'rgba(255,153,87,0.1)',border:'1px solid rgba(255,153,87,0.35)',borderRadius:'var(--radius-sm)',padding:'12px',marginBottom:12}}>
+            <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,color:'var(--fun)',marginBottom:6}}>⚠️ Référence déjà enregistrée</div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>handleConfirm(true)} disabled={saving} style={{flex:1,padding:'8px',background:'rgba(255,153,87,0.15)',border:'1px solid rgba(255,153,87,0.4)',borderRadius:8,color:'var(--fun)',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'var(--font-head)'}}>Enregistrer quand même</button>
+              <button onClick={handleSkip} style={{flex:1,padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text2)',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'var(--font-head)'}}>Ignorer</button>
+            </div>
           </div>
         )}
-        <div className="field-row">
-          <div className="field-group"><div className="field-label">Sport</div><input className="field-input" value={extracted.sport||""} onChange={e=>upd("sport",e.target.value)} /></div>
-          <div className="field-group"><div className="field-label">Bookmaker</div><select className="field-input" value={extracted.bookmaker||""} onChange={e=>upd("bookmaker",e.target.value)}><option>Winamax</option><option>Betclic</option></select></div>
-        </div>
-        <div className="field-group"><div className="field-label">Compétition</div><input className="field-input" value={extracted.competition||""} onChange={e=>upd("competition",normalizeCompetition(e.target.value))} /></div>
-        <div className="field-row">
-          <div className="field-group"><div className="field-label">Équipe 1</div><input className="field-input" value={extracted.team_1||""} onChange={e=>upd("team_1",e.target.value)} /></div>
-          <div className="field-group"><div className="field-label">Équipe 2</div><input className="field-input" value={extracted.team_2||""} onChange={e=>upd("team_2",e.target.value)} /></div>
-        </div>
-        <div className="field-row">
-          <div className="field-group"><div className="field-label">Date</div><input className="field-input" type="date" value={extracted.date||""} onChange={e=>upd("date",e.target.value)} /></div>
-          <div className="field-group"><div className="field-label">Heure</div><input className="field-input" value={extracted.heure||""} onChange={e=>upd("heure",e.target.value)} /></div>
-        </div>
-      </div>
 
-      <div className="card">
-        <div className="card-title">Structure & Résultat</div>
-        <div className="field-row">
-          <div className="field-group"><div className="field-label">Structure</div><select className="field-input" value={extracted.bet_structure||"simple"} onChange={e=>upd("bet_structure",e.target.value)}><option value="simple">Simple</option><option value="combiné">Combiné</option><option value="mymatch">MyMatch</option></select></div>
-          <div className="field-group"><div className="field-label">Résultat</div><select className="field-input" value={extracted.result||"win"} onChange={e=>upd("result",e.target.value)}><option value="win">Gagné</option><option value="loss">Perdu</option></select></div>
-        </div>
-        <div className="field-row">
-          <div className="field-group"><div className="field-label">Cote totale</div><input className="field-input" type="number" step="0.01" value={extracted.total_odd||""} onChange={e=>upd("total_odd",parseFloat(e.target.value))} /></div>
-          <div className="field-group"><div className="field-label">{isFreebet ? "Valeur freebet (€)" : "Mise (€)"}</div><input className="field-input" type="number" step="0.5" value={extracted.stake||""} onChange={e=>upd("stake",parseFloat(e.target.value))} /></div>
-        </div>
-        <div className="field-group"><div className="field-label">Gain réel (€)</div><input className="field-input" type="number" step="0.01" value={extracted.actual_win||""} onChange={e=>upd("actual_win",parseFloat(e.target.value))} /></div>
-
-        {/* FREEBET TOGGLE */}
-        <label className={`freebet-toggle ${isFreebet?'active':''}`} onClick={()=>setIsFreebet(p=>!p)}>
-          <div className={`freebet-box ${isFreebet?'checked':''}`}>{isFreebet && <span style={{color:'#0a0a0f',fontSize:11,fontWeight:800}}>✓</span>}</div>
-          <div>
-            <div className="freebet-toggle-label">🎁 Ce pari est un freebet</div>
-            <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>La mise réelle est 0€ — le gain affiché est ton profit</div>
+        {(detectingComp || compDetect) && (
+          <div className="competition-detect">
+            <div className="competition-detect-icon">{detectingComp?'🔍':'🏆'}</div>
+            <div>{detectingComp ? <div style={{fontSize:12,color:'var(--accent2)'}}>Recherche…</div> : <><div className="competition-detect-label">Compétition détectée</div><div className="competition-detect-name">{compDetect.competition}</div></>}</div>
           </div>
-        </label>
-      </div>
+        )}
 
-      {extracted.selections?.length > 0 && (
         <div className="card">
-          <div className="card-title">Sélections ({extracted.selections.length})</div>
-          {extracted.selections.map((s,i) => {
-            const isScorer = s.selection_type?.toLowerCase().includes("buteur") || s.selection_type?.toLowerCase().includes("joueur décisif");
-            const isNeg = s.negated || s.selection_type?.includes("— Non");
-            return (
-              <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)',background:'rgba(255,153,87,0.03)'}:{}}>
-                <div className="selection-left">
-                  <div className="selection-team">
-                    {s.team}{s.player_display||s.player ? ` · ${s.player_display||s.player}` : ""}
-                    {isScorer && <span className="scorer-tag">⚽ Buteur</span>}
-                    {isNeg && <span style={{background:'rgba(255,153,87,0.15)',color:'var(--fun)',border:'1px solid rgba(255,153,87,0.35)',borderRadius:5,fontSize:10,fontWeight:800,padding:'1px 5px',fontFamily:'var(--font-head)'}}>NON ↩</span>}
+          <div className="card-title">Informations générales</div>
+          <div className="field-row">
+            <div className="field-group"><div className="field-label">Sport</div><input className="field-input" value={extracted.sport||""} onChange={e=>upd("sport",e.target.value)} /></div>
+            <div className="field-group"><div className="field-label">Bookmaker</div><select className="field-input" value={extracted.bookmaker||""} onChange={e=>upd("bookmaker",e.target.value)}><option>Winamax</option><option>Betclic</option></select></div>
+          </div>
+          <div className="field-group"><div className="field-label">Compétition</div><input className="field-input" value={extracted.competition||""} onChange={e=>upd("competition",normalizeCompetition(e.target.value))} /></div>
+          <div className="field-row">
+            <div className="field-group"><div className="field-label">Équipe 1</div><input className="field-input" value={extracted.team_1||""} onChange={e=>upd("team_1",e.target.value)} /></div>
+            <div className="field-group"><div className="field-label">Équipe 2</div><input className="field-input" value={extracted.team_2||""} onChange={e=>upd("team_2",e.target.value)} /></div>
+          </div>
+          <div className="field-row">
+            <div className="field-group"><div className="field-label">Date</div><input className="field-input" type="date" value={extracted.date||""} onChange={e=>upd("date",e.target.value)} /></div>
+            <div className="field-group"><div className="field-label">Heure</div><input className="field-input" value={extracted.heure||""} onChange={e=>upd("heure",e.target.value)} /></div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Structure & Résultat</div>
+          <div className="field-row">
+            <div className="field-group"><div className="field-label">Structure</div><select className="field-input" value={extracted.bet_structure||"simple"} onChange={e=>upd("bet_structure",e.target.value)}><option value="simple">Simple</option><option value="combiné">Combiné</option><option value="mymatch">MyMatch</option></select></div>
+            <div className="field-group"><div className="field-label">Résultat</div><select className="field-input" value={extracted.result||"win"} onChange={e=>upd("result",e.target.value)}><option value="win">Gagné</option><option value="loss">Perdu</option></select></div>
+          </div>
+          <div className="field-row">
+            <div className="field-group"><div className="field-label">Cote totale</div><input className="field-input" type="number" step="0.01" value={extracted.total_odd||""} onChange={e=>upd("total_odd",parseFloat(e.target.value))} /></div>
+            <div className="field-group"><div className="field-label">{isFreebet ? "Valeur freebet (€)" : "Mise (€)"}</div><input className="field-input" type="number" step="0.5" value={extracted.stake||""} onChange={e=>upd("stake",parseFloat(e.target.value))} /></div>
+          </div>
+          <div className="field-group"><div className="field-label">Gain réel (€)</div><input className="field-input" type="number" step="0.01" value={extracted.actual_win||""} onChange={e=>upd("actual_win",parseFloat(e.target.value))} /></div>
+          <label className={`freebet-toggle ${isFreebet?'active':''}`} onClick={()=>setIsFreebet(p=>!p)}>
+            <div className={`freebet-box ${isFreebet?'checked':''}`}>{isFreebet && <span style={{color:'#0a0a0f',fontSize:11,fontWeight:800}}>✓</span>}</div>
+            <div><div className="freebet-toggle-label">🎁 Freebet</div><div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>Mise réelle 0€</div></div>
+          </label>
+        </div>
+
+        {extracted.selections?.length > 0 && (
+          <div className="card">
+            <div className="card-title">Sélections ({extracted.selections.length})</div>
+            {extracted.selections.map((s,i) => {
+              const isNeg = s.negated || s.selection_type?.includes("— Non");
+              return (
+                <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
+                  <div className="selection-left">
+                    <div className="selection-team">{s.team}{s.player_display||s.player ? ` · ${s.player_display||s.player}` : ""}</div>
+                    <div className="selection-type">{s.selection_type} {s.sel_type && s.sel_type!=="autre" && <span style={{color:'var(--accent2)',fontSize:10,fontWeight:700}}>· {s.sel_type}</span>}</div>
                   </div>
-                  <div className="selection-type">{s.selection_type}</div>
+                  <div className="selection-odd">×{fmt(s.odd)}</div>
                 </div>
-                <div className="selection-odd">×{fmt(s.odd)}</div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
 
-      <div className="card">
-        <div className="card-title">Catégorie du pari</div>
-        <div className="tag-selector">
-          {["SAFE", "FUN", ...existingTags].map(t => (
-            <button key={t} className={`tag-btn ${tag===t && !customTag?'selected':''}`} onClick={()=>{setTag(t);setCustomTag("");}}>{t}</button>
-          ))}
+        <div className="card">
+          <div className="card-title">Catégorie du pari</div>
+          <div className="tag-selector">
+            {["SAFE", "FUN", ...existingTags].map(t => (
+              <button key={t} className={`tag-btn ${tag===t && !customTag?'selected':''}`} onClick={()=>{setTag(t);setCustomTag("");}}>{t}</button>
+            ))}
+          </div>
+          <div className="field-group" style={{marginBottom:0}}>
+            <div className="field-label">Nouvelle catégorie</div>
+            <input className="field-input" placeholder="ex: VALUE, NBA…" value={customTag} onChange={e=>setCustomTag(e.target.value.toUpperCase())} />
+          </div>
         </div>
-        <div className="field-group" style={{marginBottom:0}}>
-          <div className="field-label">Nouvelle catégorie</div>
-          <input className="field-input" placeholder="ex: VALUE, NBA, RISKY…" value={customTag} onChange={e=>setCustomTag(e.target.value.toUpperCase())} />
-          {customTag && <div style={{fontSize:11,color:'var(--accent2)',marginTop:4}}>✓ Catégorie "{customTag}" sera créée</div>}
-        </div>
+
+        {error && <div className="error-msg">❌ {error}</div>}
+        <button className="btn-primary" onClick={()=>handleConfirm(false)} disabled={(dupWarning&&!saving)||saving}>
+          {saving ? "Enregistrement…" : `Enregistrer${queue.length>1?` (${queueIdx+1}/${queue.length})`:""}` }
+        </button>
+        {queue.length > 1 && <button className="btn-secondary" onClick={handleSkip}>Ignorer ce pari →</button>}
+        <button className="btn-secondary" onClick={reset} style={{marginTop:4}}>Annuler tout</button>
       </div>
+    );
+  }
 
-      <button className="btn-primary" onClick={()=>handleConfirm(false)} disabled={dupWarning || saving}>
-        {saving ? <span style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8}}><span className="spinner" style={{width:16,height:16,borderWidth:2}}/>Enregistrement…</span> : "Confirmer l'enregistrement"}
-      </button>
-      <button className="btn-secondary" onClick={reset}>Annuler</button>
+  // ── Render: ANALYZING ─────────────────────────────────────────────────────────
+  if (analyzing) return (
+    <div style={{textAlign:'center',padding:'60px 0'}}>
+      <div className="spinner" style={{margin:'0 auto 16px',width:48,height:48}}/>
+      <div className="analyzing-text">Analyse de {files.length} capture{files.length>1?"s":""}…</div>
+      <div className="analyzing-sub">Extraction IA des données</div>
     </div>
   );
+
+  // ── Render: IDLE — file selection ─────────────────────────────────────────────
+  if (mode === "idle") return (
+    <div>
+      <div className="section-title">Importer des paris</div>
+      {/* Mode tabs */}
+      <div className="tab-switch" style={{marginBottom:16}}>
+        <button className="tab-switch-btn active">📲 Screenshot</button>
+        <button className="tab-switch-btn" onClick={()=>setMode("manual")}>✏️ Manuel</button>
+      </div>
+
+      {files.length === 0 ? (
+        <div className={`upload-zone`} onClick={()=>fileRef.current?.click()}>
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={e=>{ addFiles(e.target.files); }} style={{display:'none'}} />
+          <div className="upload-icon">📲</div>
+          <div className="upload-title">Importer des captures</div>
+          <div className="upload-sub">Jusqu'à 5 screenshots à la fois</div>
+          <div className="bookmaker-badges"><span className="badge badge-winamax">Winamax</span><span className="badge badge-betclic">Betclic</span></div>
+        </div>
+      ) : (
+        <div>
+          <div className="multi-upload-grid">
+            {files.map((f,i) => (
+              <div key={i} className="multi-thumb">
+                <img src={f.previewUrl} alt="" />
+                <div className="multi-thumb-badge">#{i+1}</div>
+                <button className="multi-thumb-remove" onClick={()=>removeFile(i)}>✕</button>
+              </div>
+            ))}
+            {files.length < 5 && (
+              <div className="add-more-zone">
+                <input type="file" accept="image/*" multiple onChange={e=>addFiles(e.target.files)} />
+                <span>+</span>
+                <span style={{fontSize:10,color:'var(--text3)'}}>Ajouter</span>
+              </div>
+            )}
+          </div>
+          <div style={{fontSize:12,color:'var(--text2)',textAlign:'center',marginBottom:14}}>{files.length} capture{files.length>1?"s":""} sélectionnée{files.length>1?"s":""}</div>
+          <button className="btn-primary" onClick={handleAnalyze}>🔍 Analyser avec l'IA</button>
+          <button className="btn-secondary" onClick={()=>setFiles([])}>Recommencer</button>
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Render: MANUAL ────────────────────────────────────────────────────────────
+  if (mode === "manual") return <ManualImportForm bets={bets} addBet={addBet} existingTags={existingTags} onDone={reset} onCancel={reset}/>;
+
   return null;
 }
 
 // ─── BETS TAB ────────────────────────────────────────────────────────────────
-function BetsTab({ bets, onDelete }) {
+function BetsTab({ bets, onDelete, onUpdate }) {
   const [selected, setSelected] = useState(null);
   const [filterResult, setFilterResult] = useState("Tous");
   const [filterTag, setFilterTag] = useState("Tous");
@@ -983,7 +1262,7 @@ function BetsTab({ bets, onDelete }) {
           );
         })
       }
-      {selected && <BetDetailModal bet={selected} onClose={()=>setSelected(null)} onDelete={onDelete ? (id)=>{ onDelete(id); setSelected(null); } : null} />}
+      {selected && <BetDetailModal bet={selected} onClose={()=>setSelected(null)} onDelete={onDelete ? (id)=>{ onDelete(id); setSelected(null); } : null} onUpdate={onUpdate} allTags={allTags.filter(t=>t!=="Tous")} />}
     </div>
   );
 }
@@ -1007,6 +1286,7 @@ function BarChart({ data, colorFn }) {
 }
 
 function MonthlyBarChart({ bets }) {
+  const [activeIdx, setActiveIdx] = useState(null);
   const grouped = {};
   bets.forEach(b => {
     const k = monthKey(b.date);
@@ -1016,25 +1296,34 @@ function MonthlyBarChart({ bets }) {
   const keys = Object.keys(grouped).sort().slice(-12);
   const data = keys.map(k => {
     const p = grouped[k].reduce((a,b)=>a+betProfit(b), 0);
-    return { label: k.replace(/^\d{4}-/,""), value: p };
+    return { label: fmtMonthLabel(k), value: p, count: grouped[k].length };
   });
   if (data.length < 2) return <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'12px 0'}}>Pas assez de données</div>;
   const maxAbs = Math.max(...data.map(d=>Math.abs(d.value)), 0.01);
   const barW = Math.min(40, Math.floor(300 / data.length) - 4);
   return (
-    <div style={{display:'flex',alignItems:'flex-end',gap:3,height:80,paddingBottom:4}}>
-      {data.map((d,i)=>{
-        const pct = Math.abs(d.value)/maxAbs;
-        const h = Math.max(pct*68, 4);
-        return (
-          <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
-            <div style={{width:'100%',height:68,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
-              <div style={{width:'100%',maxWidth:barW,height:h,borderRadius:'3px 3px 0 0',background:d.value>=0?'var(--win)':'var(--loss)',opacity:0.85,minHeight:4}} title={`${d.label}: ${fmtEuro(d.value)}`}/>
+    <div>
+      {activeIdx !== null && (
+        <div style={{textAlign:'center',marginBottom:8,background:'var(--surface2)',borderRadius:8,padding:'6px 0'}}>
+          <span style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:'var(--text)'}}>{data[activeIdx].label}</span>
+          <span style={{fontSize:12,color:'var(--text2)',marginLeft:8}}>{data[activeIdx].count} paris</span>
+          <span style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:data[activeIdx].value>=0?'var(--win)':'var(--loss)',marginLeft:8}}>{fmtEuro(data[activeIdx].value)}</span>
+        </div>
+      )}
+      <div style={{display:'flex',alignItems:'flex-end',gap:3,height:80,paddingBottom:4}}>
+        {data.map((d,i)=>{
+          const pct = Math.abs(d.value)/maxAbs;
+          const h = Math.max(pct*68, 4);
+          return (
+            <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:'pointer'}} onClick={()=>setActiveIdx(activeIdx===i?null:i)}>
+              <div style={{width:'100%',height:68,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+                <div style={{width:'100%',maxWidth:barW,height:h,borderRadius:'3px 3px 0 0',background:d.value>=0?'var(--win)':'var(--loss)',opacity:activeIdx===i?1:0.75,minHeight:4,transition:'opacity 0.15s',outline:activeIdx===i?`2px solid ${d.value>=0?'var(--win)':'var(--loss)'}`:''}}/>
+              </div>
+              <div style={{fontSize:8,color:activeIdx===i?'var(--text)':'var(--text3)',fontFamily:'var(--font-head)',fontWeight:700,letterSpacing:'0.3px',maxWidth:barW+4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'}}>{d.label}</div>
             </div>
-            <div style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--font-head)',fontWeight:700,letterSpacing:'0.3px',maxWidth:barW,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'}}>{d.label}</div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1229,6 +1518,65 @@ function DonutChart({ segments, size=80 }) {
   );
 }
 
+// ─── COLLAPSIBLE STAT SECTION ─────────────────────────────────────────────────
+function StatSection({ title, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="stat-section">
+      <div className="stat-section-header" onClick={()=>setOpen(o=>!o)}>
+        <span className="stat-section-title">{title}</span>
+        <span className={`stat-section-arrow ${open?'open':''}`}>▾</span>
+      </div>
+      <div className={`stat-section-body ${open?'open':'closed'}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── SEGMENT TABLE (générique) ────────────────────────────────────────────────
+function SegTable({ rows }) {
+  if (!rows || rows.length === 0) return <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'8px 0'}}>Pas assez de données</div>;
+  return (
+    <div className="card" style={{padding:0,overflow:'hidden'}}>
+      <table className="data-table">
+        <thead><tr><th>Segment</th><th style={{textAlign:'center'}}>Paris</th><th style={{textAlign:'center'}}>Réussite</th><th style={{textAlign:'right'}}>Profit</th></tr></thead>
+        <tbody>
+          {rows.map((r,i)=>(
+            <tr key={i}>
+              <td className="num">{r.label}</td>
+              <td style={{textAlign:'center',color:'var(--text2)'}}>{r.count}</td>
+              <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)'}}>{fmt(r.rate,0)}%</td>
+              <td style={{textAlign:'right',fontFamily:'var(--font-head)',fontWeight:800,color:r.profit!=null?(r.profit>=0?'var(--win)':'var(--loss)'):'var(--text2)'}}>{r.profit!=null?fmtEuro(r.profit):'—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── SELECTION STATS TABLE ────────────────────────────────────────────────────
+function SelTable({ rows, label }) {
+  if (!rows || rows.length === 0) return <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'8px 0'}}>Pas assez de données</div>;
+  return (
+    <div className="card" style={{padding:0,overflow:'hidden'}}>
+      <table className="data-table">
+        <thead><tr><th>{label}</th><th style={{textAlign:'center'}}>Paris</th><th style={{textAlign:'center'}}>Réussite</th></tr></thead>
+        <tbody>
+          {rows.map((r,i)=>(
+            <tr key={i}>
+              <td className="num">{r.label}</td>
+              <td style={{textAlign:'center',color:'var(--text2)'}}>{r.total}</td>
+              <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)'}}>{fmt(r.rate,0)}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── DASHBOARD TAB (Stats) ────────────────────────────────────────────────────
 function DashboardTab({ bets }) {
   const [pView, setPView] = useState("top");
@@ -1237,29 +1585,28 @@ function DashboardTab({ bets }) {
   const s = computeStats(bets);
   const freebets = bets.filter(b=>b.is_freebet);
 
-  // 1. Main KPIs
-  // 2. Profit par catégorie (tous les tags)
+  // Segmentation data
   const allTags = [...new Set(bets.map(b=>b.tag).filter(Boolean))];
-  const tagData = allTags.map(t=>{
-    const sub=bets.filter(b=>b.tag===t);
-    return { label:t, value: computeStats(sub).profit, count:sub.length };
-  }).filter(d=>d.count>0).sort((a,b)=>b.value-a.value);
+  const tagRows = allTags.map(t=>{ const sub=bets.filter(b=>b.tag===t); const st=computeStats(sub); return {label:t,count:sub.length,rate:st.rate,profit:st.profit}; }).sort((a,b)=>b.profit-a.profit);
 
-  // 3. Profit par sport
+  const structures = ["simple","combiné","mymatch"];
+  const structureRows = structures.map(str=>{ const sub=bets.filter(b=>b.bet_structure===str); if(!sub.length) return null; const st=computeStats(sub); return {label:str==="simple"?"Simple":str==="combiné"?"Combiné":"MyMatch",count:sub.length,rate:st.rate,profit:st.profit}; }).filter(Boolean);
+
   const sports = [...new Set(bets.map(b=>b.sport).filter(Boolean))];
-  const sportData = sports.map(sp=>{
-    const sub=bets.filter(b=>b.sport===sp);
-    const st=computeStats(sub);
-    return { label:sp, count:sub.length, avgOdd:st.avgOdd, profit:st.profit, rate:st.rate };
-  }).sort((a,b)=>b.profit-a.profit);
+  const sportRows = sports.map(sp=>{ const sub=bets.filter(b=>b.sport===sp); const st=computeStats(sub); return {label:sp,count:sub.length,rate:st.rate,profit:st.profit}; }).sort((a,b)=>b.profit-a.profit);
 
-  // 4. Odd range
+  // Selection-level stats
+  const allSels = getAllSelections(bets);
+  const selTypeRows = getSelGroupStats(allSels, s=>s._selType);
+  const compRows = getSelGroupStats(allSels.filter(s=>s._competition), s=>s._competition).slice(0,12);
+
+  // Odd range
   const oddRanges = getOddRangeStats(bets);
 
-  // 5. Streak
+  // Streak
   const streaks = getStreaks(bets);
 
-  // 6. Players
+  // Players
   const players = getPlayerStats(bets);
   const topP = [...players].sort((a,b)=>b.profit-a.profit).slice(0,5);
   const worstP = [...players].sort((a,b)=>a.profit-b.profit).slice(0,5);
@@ -1267,7 +1614,7 @@ function DashboardTab({ bets }) {
 
   return (
     <div>
-      {/* ── BLOC 1 : KPIs ── */}
+      {/* ── BLOC 1 : KPIs (always visible) ── */}
       <div className="section-title">Résumé global</div>
       <div className="stat-grid">
         <div className="stat-card"><div className="stat-label">Total paris</div><div className="stat-value neutral">{s.total}</div><div className="stat-sub">{s.wins} gagnés</div></div>
@@ -1281,103 +1628,117 @@ function DashboardTab({ bets }) {
         </div>
       </div>
 
-      {/* ── BANKROLL ── */}
-      <div className="section-title">Évolution de la bankroll</div>
+      {/* ── BANKROLL (always visible) ── */}
+      <div className="section-title" style={{marginTop:8}}>Évolution de la bankroll</div>
       <div className="card" style={{padding:'14px 14px 10px'}}><BankrollChart bets={bets}/></div>
 
-      {/* ── BLOC 2 : Profit par catégorie ── */}
-      <div className="section-title">Profit par catégorie</div>
-      <div className="card">
-        <BarChart data={tagData.map(d=>({label:d.label,value:d.value}))} />
-      </div>
+      {/* ── COLLAPSIBLE SECTIONS below ── */}
+      <div style={{marginTop:12}}>
 
-      {/* ── BLOC 3 : Performance dans le temps (par mois) ── */}
-      <div className="section-title">Performance par mois</div>
-      <div className="card" style={{padding:'14px 14px 10px'}}><MonthlyBarChart bets={bets}/></div>
+        <StatSection title="📊 Performance par mois">
+          <div className="card" style={{padding:'14px 14px 10px'}}><MonthlyBarChart bets={bets}/></div>
+        </StatSection>
 
-      {/* ── BLOC 3b : Répartition par catégorie ── */}
-      <div className="section-title">Répartition par catégorie</div>
-      <div className="card" style={{padding:'16px'}}><CategoryPieChart bets={bets}/></div>
+        <StatSection title="🏷️ Par catégorie">
+          <SegTable rows={tagRows}/>
+          <div className="card" style={{padding:'16px',marginTop:8}}><CategoryPieChart bets={bets}/></div>
+        </StatSection>
 
-      {/* ── BLOC 4 : Heatmap par sport ── */}
-      {sportData.length > 0 && <>
-        <div className="section-title">Performances par sport</div>
-        <div className="card"><SportHeatmap bets={bets}/></div>
-      </>}
+        <StatSection title="🏗️ Par structure de pari">
+          <SegTable rows={structureRows}/>
+        </StatSection>
 
-      {/* ── BLOC 5 : Profit par tranche de cote ── */}
-      {oddRanges.length > 0 && <>
-        <div className="section-title">Profit par tranche de cote</div>
-        <div className="card" style={{padding:0,overflow:'hidden'}}>
-          <table className="data-table">
-            <thead><tr><th>Cote</th><th>Paris</th><th>Réussite</th><th>Profit</th></tr></thead>
-            <tbody>
-              {oddRanges.map((r,i)=>(
-                <tr key={i}>
-                  <td className="num">{r.label}</td>
-                  <td>{r.count}</td>
-                  <td>{fmt(r.rate,0)}%</td>
-                  <td className="num" style={{color:r.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(r.profit)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </>}
+        <StatSection title="⚽ Par sport">
+          <SegTable rows={sportRows}/>
+        </StatSection>
 
-      {/* ── BLOC 6 : Streak ── */}
-      {bets.length >= 2 && <>
-        <div className="section-title">Séries & Streaks</div>
-        <div className="card">
-          <div style={{display:'flex',gap:10,marginBottom:14}}>
-            <div style={{flex:1,background:'var(--surface2)',borderRadius:'var(--radius-sm)',padding:'10px 12px',textAlign:'center'}}>
-              <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4,fontWeight:600}}>Série actuelle</div>
-              <div style={{fontFamily:'var(--font-head)',fontSize:24,fontWeight:800,color:streaks.currentType==='win'?'var(--win)':'var(--loss)'}}>{streaks.current}×</div>
-              <div style={{fontSize:11,color:'var(--text2)'}}>{streaks.currentType==='win'?'Victoires':'Défaites'}</div>
+        {allSels.length > 0 && (
+          <StatSection title="🎯 Par type de sélection">
+            <SelTable rows={selTypeRows} label="Type"/>
+          </StatSection>
+        )}
+
+        {compRows.length > 0 && (
+          <StatSection title="🏆 Par compétition">
+            <SelTable rows={compRows} label="Compétition"/>
+          </StatSection>
+        )}
+
+        {oddRanges.length > 0 && (
+          <StatSection title="📈 Par tranche de cote">
+            <div className="card" style={{padding:0,overflow:'hidden'}}>
+              <table className="data-table">
+                <thead><tr><th>Cote</th><th>Paris</th><th>Réussite</th><th>Profit</th></tr></thead>
+                <tbody>
+                  {oddRanges.map((r,i)=>(
+                    <tr key={i}>
+                      <td className="num">{r.label}</td>
+                      <td>{r.count}</td>
+                      <td>{fmt(r.rate,0)}%</td>
+                      <td className="num" style={{color:r.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(r.profit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div style={{flex:1,background:'var(--surface2)',borderRadius:'var(--radius-sm)',padding:'10px 12px',textAlign:'center'}}>
-              <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4,fontWeight:600}}>Meilleure série</div>
-              <div style={{fontFamily:'var(--font-head)',fontSize:24,fontWeight:800,color:'var(--win)'}}>{streaks.bestWin}×</div>
-              <div style={{fontSize:11,color:'var(--text2)'}}>Victoires consécutives</div>
-            </div>
-          </div>
-          {streaks.last10.length > 0 && (
-            <div>
-              <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:8,fontWeight:600}}>Derniers {streaks.last10.length} paris</div>
-              <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
-                {streaks.last10.map((r,i)=>(
-                  <div key={i} className={`streak-dot ${r}`}>{r==='win'?'W':'L'}</div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </>}
+          </StatSection>
+        )}
 
-      {/* ── BLOC 7 : Joueurs ── */}
-      {players.length > 0 && <>
-        <div className="section-title">Classement joueurs</div>
-        <div className="card">
-          <div className="tab-switch">
-            <button className={`tab-switch-btn ${pView==='top'?'active':''}`} onClick={()=>setPView('top')}>🏆 Top performers</button>
-            <button className={`tab-switch-btn ${pView==='worst'?'active':''}`} onClick={()=>setPView('worst')}>💀 Portent la poisse</button>
-          </div>
-          {shown.length === 0
-            ? <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'12px 0'}}>Pas assez de données</div>
-            : shown.map((p,i)=>(
-              <div key={p.player} className="player-row">
-                <div className="player-rank" style={{color:i===0?(pView==='top'?'var(--accent)':'var(--loss)'):'var(--text3)'}}>{pView==='worst'?'💀':'🏆'}</div>
-                <div className="player-avatar">⚽</div>
-                <div className="player-info">
-                  <div className="player-name">{p.display}</div>
-                  <div className="player-meta">{p.count} paris · {p.count>0?fmt(p.wins/p.count*100,0):0}% réussite</div>
+        {bets.length >= 2 && (
+          <StatSection title="🔥 Séries & Streaks">
+            <div className="card">
+              <div style={{display:'flex',gap:10,marginBottom:14}}>
+                <div style={{flex:1,background:'var(--surface2)',borderRadius:'var(--radius-sm)',padding:'10px 12px',textAlign:'center'}}>
+                  <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4,fontWeight:600}}>Série actuelle</div>
+                  <div style={{fontFamily:'var(--font-head)',fontSize:24,fontWeight:800,color:streaks.currentType==='win'?'var(--win)':'var(--loss)'}}>{streaks.current}×</div>
+                  <div style={{fontSize:11,color:'var(--text2)'}}>{streaks.currentType==='win'?'Victoires':'Défaites'}</div>
                 </div>
-                <div className="player-profit" style={{color:p.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(p.profit)}</div>
+                <div style={{flex:1,background:'var(--surface2)',borderRadius:'var(--radius-sm)',padding:'10px 12px',textAlign:'center'}}>
+                  <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4,fontWeight:600}}>Meilleure série</div>
+                  <div style={{fontFamily:'var(--font-head)',fontSize:24,fontWeight:800,color:'var(--win)'}}>{streaks.bestWin}×</div>
+                  <div style={{fontSize:11,color:'var(--text2)'}}>Victoires consécutives</div>
+                </div>
               </div>
-            ))
-          }
-        </div>
-      </>}
+              {streaks.last10.length > 0 && (
+                <div>
+                  <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:8,fontWeight:600}}>Derniers {streaks.last10.length} paris</div>
+                  <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                    {streaks.last10.map((r,i)=>(
+                      <div key={i} className={`streak-dot ${r}`}>{r==='win'?'W':'L'}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </StatSection>
+        )}
+
+        {players.length > 0 && (
+          <StatSection title="⭐ Classement joueurs">
+            <div className="card">
+              <div className="tab-switch">
+                <button className={`tab-switch-btn ${pView==='top'?'active':''}`} onClick={()=>setPView('top')}>🏆 Top performers</button>
+                <button className={`tab-switch-btn ${pView==='worst'?'active':''}`} onClick={()=>setPView('worst')}>💀 Portent la poisse</button>
+              </div>
+              {shown.length === 0
+                ? <div style={{textAlign:'center',color:'var(--text3)',fontSize:13,padding:'12px 0'}}>Pas assez de données</div>
+                : shown.map((p,i)=>(
+                  <div key={p.player} className="player-row">
+                    <div className="player-rank" style={{color:i===0?(pView==='top'?'var(--accent)':'var(--loss)'):'var(--text3)'}}>{pView==='worst'?'💀':'🏆'}</div>
+                    <div className="player-avatar">⚽</div>
+                    <div className="player-info">
+                      <div className="player-name">{p.display}</div>
+                      <div className="player-meta">{p.count} paris · {p.count>0?fmt(p.wins/p.count*100,0):0}% réussite</div>
+                    </div>
+                    <div className="player-profit" style={{color:p.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(p.profit)}</div>
+                  </div>
+                ))
+              }
+            </div>
+          </StatSection>
+        )}
+
+      </div>
     </div>
   );
 }
@@ -1511,11 +1872,15 @@ function useUserBets(username) {
     const [saved] = await sbPost("bets", row);
     setBetsState(prev => [{ ...saved, selections: saved.selections || [], is_freebet: saved.is_freebet || false }, ...prev]);
   };
+  const updateBet = async (betId, fields) => {
+    await sbPatch("bets", `id=eq.${betId}&username=eq.${encodeURIComponent(username)}`, fields);
+    setBetsState(prev => prev.map(b => b.id === betId ? { ...b, ...fields } : b));
+  };
   const setBets = (updater) => {
     if (typeof updater === "function") setBetsState(prev => updater(prev));
     else setBetsState(updater);
   };
-  return { bets, storageReady, setBets, addBet };
+  return { bets, storageReady, setBets, addBet, updateBet };
 }
 
 // ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
@@ -1566,7 +1931,7 @@ function LoginScreen({ onLogin, onRegister }) {
 // ─── APP ─────────────────────────────────────────────────────────────────────
 export default function App() {
   const { user, authReady, login, register, logout } = useAuth();
-  const { bets, storageReady, setBets, addBet } = useUserBets(user);
+  const { bets, storageReady, setBets, addBet, updateBet } = useUserBets(user);
   const [tab, setTab] = useState("upload");
 
   const deleteBet = async (betId) => {
@@ -1596,8 +1961,8 @@ export default function App() {
           </div>
         </div>
         <div className="scroll-area">
-          {tab==="upload" && <UploadTab addBet={addBet} setBets={setBets} bets={bets}/>}
-          {tab==="bets" && <BetsTab bets={bets} onDelete={deleteBet}/>}
+          {tab==="upload" && <UploadTab addBet={addBet} setBets={setBets} bets={bets} updateBet={updateBet}/>}
+          {tab==="bets" && <BetsTab bets={bets} onDelete={deleteBet} onUpdate={updateBet}/>}
           {tab==="dashboard" && <DashboardTab bets={bets}/>}
           {tab==="insights" && <InsightsTab bets={bets}/>}
         </div>
