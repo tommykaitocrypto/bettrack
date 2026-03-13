@@ -218,7 +218,7 @@ const CSS = `
   .ai-panel { background: linear-gradient(135deg, rgba(200,255,87,0.03), rgba(87,200,255,0.03)); border: 1px solid rgba(200,255,87,0.15); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
   .ai-panel-title { font-family: var(--font-head); font-size: 17px; font-weight: 800; margin-bottom: 5px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
   .ai-panel-sub { font-size: 12px; color: var(--text2); line-height: 1.6; margin-bottom: 14px; }
-  .ai-premium-badge { background: linear-gradient(90deg, #c8ff57, #57c8ff); color: #0a0a0f; font-size: 9px; font-weight: 800; padding: 3px 7px; border-radius: 5px; font-family: var(--font-head); letter-spacing: 0.5px; }
+  .ai-premium-badge { background: linear-gradient(90deg, #c8ff57, #57c8ff); color: #0a0a0f; font-size: 9px; font-weight: 800; padding: 3px 7px; border-radius: 5px; font-family: var(--font-head); letter-spacing: 0.2px; }
   .ai-features { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
   .ai-feature { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text2); }
   .ai-feature-icon { color: var(--accent); font-size: 13px; flex-shrink: 0; }
@@ -229,6 +229,10 @@ const CSS = `
   .ai-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #c8ff57, #57c8ff); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
   .ai-response-title { font-family: var(--font-head); font-size: 13px; font-weight: 700; }
   .ai-response-body { font-size: 12px; color: var(--text2); line-height: 1.8; white-space: pre-wrap; }
+  .ai-response-body strong { color: var(--text); font-weight: 700; }
+  .ai-response-body em { color: var(--accent2); font-style: italic; }
+  .qa-bubble.ai strong { color: var(--text); font-weight: 700; }
+  .qa-bubble.ai em { color: var(--accent2); font-style: italic; }
   .ai-typing { display: flex; gap: 4px; align-items: center; padding: 8px 0; justify-content: center; }
   .ai-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s infinite; }
   .ai-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -400,25 +404,82 @@ function getStreaks(bets){
 function normalizeSelType(raw){
   if(!raw) return "autre";
   const r=raw.toLowerCase();
-  if(r.includes("buteur")||r.includes("joueur décisif")||r.includes("marquer")||r.includes("scorer")) return "buteur";
+  if(r.includes("doublé")||r.includes("triplé")||r.includes("quadruplé")) return "doublé/triplé";
+  if(r.includes("passeur")||r.includes("passe décisive")||r.includes("joueur décisif")||r.includes("buteur")||r.includes("marquer")||r.includes("scorer")) return "joueur décisif";
+  if(r.includes("score exact")&&(r.includes("mi-temps")||r.includes("1ère")||r.includes("2ème"))) return "score exact MT";
   if(r.includes("score exact")||r.includes("score précis")||r.includes("correct score")) return "score exact";
+  if(r.includes("qualification")) return "qualification";
+  if(r.includes("handicap")||r.includes("spread")) return "handicap";
+  if(r.includes("première équipe à marquer")||r.includes("1ère équipe à marquer")) return "1ère équipe à marquer";
+  if(r.includes("écart")||r.includes("marge")) return "écart buts";
+  if((r.includes("nb buts")||r.includes("nombre de but"))&&(r.includes("mi-temps")||r.includes("1ère")||r.includes("2ème"))) return "nb buts MT";
+  if(r.includes("btts")||r.includes("les deux équipes")||r.includes("both teams")) return "les 2 marquent";
+  if(r.includes("clean sheet")||r.includes("sans encaisser")) return "clean sheet";
   if(r.includes("nb buts")||r.includes("nombre de but")||r.includes("total buts")||r.includes("over")||r.includes("under")||r.includes("plus de")||r.includes("moins de")) return "nb buts";
-  if(r.includes("écart")||r.includes("handicap")||r.includes("spread")) return "écart buts";
-  if(r.includes("résultat")||r.includes("victoire")||r.includes("nul")||r.includes("gagnant")||r.includes("1x2")||r.includes("vainqueur")||r.includes("mi-temps")||r.includes("double chance")||r.includes("nombre de points")||r.includes("rebonds")||r.includes("passes")) return "résultat";
+  if(r.includes("résultat")||r.includes("victoire")||r.includes("nul")||r.includes("défaite")||r.includes("gagnant")||r.includes("1x2")||r.includes("vainqueur")||r.includes("mi-temps")||r.includes("double chance")) return "résultat";
   return "autre";
 }
 
-// MyMatch sel types (specific tags for UI selection)
-const MYMATCH_SEL_TYPES = ["résultat","buteur","score exact","nb buts","écart buts"];
+// Full sel type list for UI
+const ALL_SEL_TYPES = ["résultat","nb buts","nb buts MT","score exact","score exact MT","joueur décisif","doublé/triplé","handicap","qualification","écart buts","1ère équipe à marquer","les 2 marquent","clean sheet","autre"];
+
+// displayStructure: mymatch → simple
+function displayStructure(bet){
+  if(bet.bet_structure==="mymatch") return "simple";
+  return bet.bet_structure||"simple";
+}
 
 function getAllSelections(bets){
   const result=[];
   bets.forEach(bet=>{
     (bet.selections||[]).forEach(sel=>{
-      result.push({...sel,_bet:bet,_selType:normalizeSelType(sel.selection_type),_competition:bet.competition||""});
+      // For combiné, use sel_result if available; else fall back to bet result for simple
+      const selWin = sel.sel_result==="win" ? true : sel.sel_result==="loss" ? false : (bet.bet_structure!=="combiné" ? bet.result==="win" : null);
+      result.push({...sel,_bet:bet,_selType:normalizeSelType(sel.sel_type||sel.selection_type),_competition:bet.competition||"",_selWin:selWin});
     });
   });
   return result;
+}
+
+function getSelGroupStatsIndividual(selections,keyFn){
+  const map={};
+  selections.forEach(sel=>{
+    const k=keyFn(sel)||"—";
+    if(!map[k]) map[k]={label:k,total:0,wins:0,known:0};
+    map[k].total++;
+    if(sel._selWin===true){map[k].wins++;map[k].known++;}
+    else if(sel._selWin===false){map[k].known++;}
+  });
+  return Object.values(map).map(g=>({...g,rate:g.known>0?(g.wins/g.known)*100:0})).sort((a,b)=>b.total-a.total);
+}
+
+// Vue par équipe/joueur
+function getEntityStats(bets, query){
+  const q = query.toLowerCase().trim();
+  if(!q) return {bets:[], selStats:[]};
+  
+  // Find bets where entity appears
+  const matchedBets = bets.filter(b=>{
+    if(b.team_1?.toLowerCase().includes(q)||b.team_2?.toLowerCase().includes(q)) return true;
+    return (b.selections||[]).some(s=>
+      s.team?.toLowerCase().includes(q)||
+      s.player?.toLowerCase().includes(q)||
+      s.player_display?.toLowerCase().includes(q)
+    );
+  });
+  
+  // Filter selections for this entity
+  const allSels = getAllSelections(matchedBets);
+  const entitySels = allSels.filter(s=>
+    s.team?.toLowerCase().includes(q)||
+    s.player?.toLowerCase().includes(q)||
+    s.player_display?.toLowerCase().includes(q)||
+    s._bet.team_1?.toLowerCase().includes(q)||
+    s._bet.team_2?.toLowerCase().includes(q)
+  );
+  
+  const selStats = getSelGroupStatsIndividual(entitySels, s=>s._selType);
+  return {bets:matchedBets, selStats};
 }
 
 function getSelGroupStats(selections,keyFn){
@@ -427,14 +488,15 @@ function getSelGroupStats(selections,keyFn){
     const k=keyFn(sel)||"—";
     if(!map[k]) map[k]={label:k,total:0,wins:0};
     map[k].total++;
-    if(sel._bet.result==="win") map[k].wins++;
+    if(sel._selWin===true) map[k].wins++;
+    else if(sel._selWin===null&&sel._bet.result==="win") map[k].wins++;
   });
   return Object.values(map).map(g=>({...g,rate:g.total>0?(g.wins/g.total)*100:0})).sort((a,b)=>b.total-a.total);
 }
 
 function getOddRangeStats(bets){
   // Exclude mymatch and extreme odds
-  const valid = bets.filter(b=>b.bet_structure!=="mymatch"&&b.total_odd&&b.total_odd>1&&b.total_odd<100);
+  const valid = bets.filter(b=>b.total_odd&&b.total_odd>1&&b.total_odd<100);
   const ranges=[{label:"1.0 – 1.5",min:1,max:1.5},{label:"1.5 – 2.0",min:1.5,max:2},{label:"2.0 – 3.0",min:2,max:3},{label:"3.0+",min:3,max:9999}];
   return ranges.map(r=>{const sub=valid.filter(b=>b.total_odd>r.min&&b.total_odd<=r.max);const st=computeStats(sub);return{...r,count:sub.length,profit:st.profit,wins:st.wins,rate:st.rate,roi:st.roi};}).filter(r=>r.count>0);
 }
@@ -469,29 +531,38 @@ async function analyzeScreenshot(base64,mimeType){
 ━━━ RÈGLE 1 — QUEL PARI CHOISIR ━━━
 Identifie LE PARI LE PLUS COMPLET : statut visible, au moins une sélection, mise, gains, référence.
 
-━━━ RÈGLE 2 — RÉSULTAT ━━━
-1. Label texte coloré : "Gagné" (fond vert) → "win" ; "Perdu" (fond rouge) → "loss"
-2. Barre de progression : entièrement verte = win ; rouge présent = loss
-3. Gains > 0 → "win" ; Gains = 0,00€ → "loss"
+━━━ RÈGLE 2 — RÉSULTAT GLOBAL ━━━
+1. Label texte coloré : "Gagné" (fond vert)→"win" ; "Perdu" (fond rouge)→"loss"
+2. Gains > 0 → "win" ; Gains = 0,00€ → "loss"
 
 ━━━ RÈGLE 3 — FREEBET ━━━
 Si tu vois "freebet", "pari gratuit", "free bet" : is_freebet = true
 
-━━━ RÈGLE 4 — "NON" dans les sélections ━━━
+━━━ RÈGLE 4 — STRUCTURE ━━━
+MyMatch (critères cumulés sur UN seul match) → bet_structure="simple"
+Combiné = paris sur PLUSIEURS matchs différents → bet_structure="combiné"
+Simple classique → bet_structure="simple"
+IMPORTANT: plus jamais "mymatch" comme valeur de bet_structure.
+
+━━━ RÈGLE 5 — RÉSULTAT PAR SÉLECTION ━━━
+Pour chaque sélection d'un combiné, indique "sel_result":"win"|"loss"|null selon ce qui est visible.
+
+━━━ RÈGLE 6 — "NON" dans les sélections ━━━
 Si une sélection affiche "Non" : inclus-le dans selection_type ET mets negated:true.
 
-━━━ RÈGLE 5 — JOUEURS ━━━
-- "player" : format "I.Nom" (ex: "Bradley Barcola" → "B.Barcola")
-- "player_display" : nom complet tel qu'il apparaît
+━━━ RÈGLE 7 — JOUEURS ━━━
+"player" : format "I.Nom" (ex: "Bradley Barcola"→"B.Barcola")
+"player_display" : nom complet tel qu'il apparaît
 
-━━━ RÈGLE 6 — COTE MYMATCH ━━━
-Pour les paris MyMatch : la cote totale est le multiplicateur flottant (ex: 3.50). Si non visible, mets null. Ne pas mettre le numéro de sélection MyMatch comme cote.
+━━━ RÈGLE 8 — ÉQUIPE PAR SÉLECTION ━━━
+Pour chaque sélection, "team" = l'équipe concernée par ce critère.
+Ex: "Victoire PSG"→team:"PSG" ; "Mbappé buteur"→team:"",player:"K.Mbappé"
 
-━━━ RÈGLE 7 — TYPE DE SÉLECTION ━━━
-Pour chaque sélection, ajoute "sel_type" parmi : "résultat"|"buteur"|"score exact"|"nb buts"|"écart buts"|"autre"
+━━━ RÈGLE 9 — TYPE DE SÉLECTION ━━━
+sel_type parmi: "résultat"|"nb buts"|"nb buts MT"|"score exact"|"score exact MT"|"joueur décisif"|"doublé/triplé"|"handicap"|"qualification"|"écart buts"|"1ère équipe à marquer"|"les 2 marquent"|"clean sheet"|"autre"
 
 ━━━ FORMAT JSON ━━━
-{"bet_ref":"","sport":"Football","bookmaker":"Winamax","competition":"","date":"YYYY-MM-DD","heure":"HH:MM","team_1":"","team_2":"","bet_structure":"simple|combiné|mymatch","bet_category":"team|player|goals|combo","total_odd":1.5,"stake":10.0,"actual_win":0.0,"result":"win|loss","is_freebet":false,"selections":[{"team":"","player":"B.Barcola","player_display":"Bradley Barcola","selection_type":"joueur décisif","sel_type":"buteur","odd":1.38,"negated":false}]}`,
+{"bet_ref":"","sport":"Football","bookmaker":"Winamax","competition":"","date":"YYYY-MM-DD","heure":"HH:MM","team_1":"","team_2":"","bet_structure":"simple|combiné","bet_category":"team|player|goals|combo","total_odd":1.5,"stake":10.0,"actual_win":0.0,"result":"win|loss","is_freebet":false,"selections":[{"team":"PSG","player":"","player_display":"","selection_type":"Victoire PSG","sel_type":"résultat","sel_result":null,"odd":1.38,"negated":false}]}`,
     messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mimeType,data:base64}},{type:"text",text:"Extrais le pari le plus complet visible sur cette image."}]}]
   })});
   const data=await r.json();
@@ -575,18 +646,34 @@ function extractJSON(text){
   throw new Error("Incomplete JSON");
 }
 
+function parseMarkdown(text){
+  if(!text) return "";
+  return text
+    .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/^### (.+)$/gm,'<span style="font-size:13px;font-weight:800;color:var(--text);font-family:var(--font-head);display:block;margin:10px 0 4px">$1</span>')
+    .replace(/^## (.+)$/gm,'<span style="font-size:14px;font-weight:800;color:var(--accent);font-family:var(--font-head);display:block;margin:12px 0 5px">$1</span>')
+    .replace(/^# (.+)$/gm,'<span style="font-size:15px;font-weight:800;color:var(--accent);font-family:var(--font-head);display:block;margin:14px 0 6px">$1</span>');
+}
+
 async function runAIAnalysis(bets){
   const s=computeStats(bets);
+  // Team stats
+  const teamFreq2={};
+  bets.forEach(b=>{[b.team_1,b.team_2].filter(Boolean).forEach(t=>{teamFreq2[t]=(teamFreq2[t]||0)+1;});});
+  const topTeams2=Object.entries(teamFreq2).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([t,n])=>{const sub=bets.filter(b=>b.team_1===t||b.team_2===t);const st=computeStats(sub);return{team:t,count:n,profit:st.profit,rate:st.rate,roi:st.roi};});
   const payload={
     totalBets:bets.length,winRate:s.rate,profit:s.profit,roi:s.roi,totalStake:s.totalStake,avgOdd:s.avgOdd,
-    byStructure:["simple","combiné","mymatch"].reduce((o,k)=>{const sub=bets.filter(b=>b.bet_structure===k);o[k]=computeStats(sub);return o;},{}),
+    byStructure:["simple","combiné"].reduce((o,k)=>{const sub=bets.filter(b=>k==="simple"?(b.bet_structure==="simple"||b.bet_structure==="mymatch"):b.bet_structure===k);if(sub.length)o[k]=computeStats(sub);return o;},{}),
     oddRanges:getOddRangeStats(bets).map(r=>({range:r.label,count:r.count,profit:r.profit,rate:r.rate,roi:r.roi})),
     tags:[...new Set(bets.map(b=>b.tag))].map(t=>({tag:t,...computeStats(bets.filter(b=>b.tag===t))})),
     topPlayers:getPlayerStats(bets).sort((a,b)=>b.profit-a.profit).slice(0,3),
-    bets:bets.map(b=>({date:b.date,match:`${b.team_1} vs ${b.team_2}`,struct:b.bet_structure,odd:b.total_odd,stake:b.stake,win:b.actual_win,result:b.result,tag:b.tag,freebet:b.is_freebet}))
+    topTeams:topTeams2,
+    bets:bets.map(b=>({date:b.date,match:`${b.team_1} vs ${b.team_2}`,struct:displayStructure(b),odd:b.total_odd,stake:b.stake,win:b.actual_win,result:b.result,tag:b.tag,freebet:b.is_freebet}))
   };
   return callClaude(
-    `Tu es un analyste expert en paris sportifs. Analyse les données et fournis une analyse personnalisée, directe et actionnable en français. Structure : 1) Profil de parieur, 2) Ce qui marche, 3) Ce qui ne marche pas, 4) Recommandations concrètes.`,
+    `Tu es un analyste expert en paris sportifs. Analyse les données et fournis une analyse personnalisée, directe et actionnable en français. Utilise du markdown (gras avec **mot**, titres avec ##). Structure : ## Profil de parieur, ## Ce qui marche ✅, ## Ce qui ne marche pas ❌, ## Par équipe (top équipes rentables vs déficitaires), ## Recommandations concrètes 🎯. Sois direct, factuel, ne dis pas 'je vais analyser', donne des chiffres précis.`,
     `Voici mes données:\n${JSON.stringify(payload,null,2)}`,1000
   );
 }
@@ -601,21 +688,26 @@ async function runQAQuery(bets,question){
 
 async function generateBetTrackCard(bets,username){
   const s=computeStats(bets);
+  // Top teams by frequency
+  const teamFreq={};
+  bets.forEach(b=>{[b.team_1,b.team_2].filter(Boolean).forEach(t=>{teamFreq[t]=(teamFreq[t]||0)+1;});});
+  const topTeams=Object.entries(teamFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([t,n])=>({team:t,count:n,...computeStats(bets.filter(b=>b.team_1===t||b.team_2===t))}));
   const payload={
     username,totalBets:bets.length,profit:s.profit,roi:s.roi,winRate:s.rate,avgOdd:s.avgOdd,totalStake:s.totalStake,
-    byStructure:["simple","combiné","mymatch"].reduce((o,k)=>{const sub=bets.filter(b=>b.bet_structure===k);if(sub.length)o[k]=computeStats(sub);return o;},{}),
+    byStructure:["simple","combiné"].reduce((o,k)=>{const sub=bets.filter(b=>(k==="simple"?(b.bet_structure==="simple"||b.bet_structure==="mymatch"):b.bet_structure===k));if(sub.length)o[k]=computeStats(sub);return o;},{}),
     tags:[...new Set(bets.map(b=>b.tag))].map(t=>({tag:t,...computeStats(bets.filter(b=>b.tag===t))})),
     bestBet:bets.map(b=>({...b,profit:betProfit(b)})).sort((a,b)=>b.profit-a.profit)[0],
     biggestOddWin:bets.filter(b=>b.result==="win"&&b.total_odd).sort((a,b)=>b.total_odd-a.total_odd)[0],
-    bets:bets.map(b=>({date:b.date,match:`${b.team_1} vs ${b.team_2}`,odd:b.total_odd,stake:b.stake,profit:betProfit(b),result:b.result,struct:b.bet_structure}))
+    topTeams,
+    bets:bets.map(b=>({date:b.date,match:`${b.team_1} vs ${b.team_2}`,odd:b.total_odd,stake:b.stake,profit:betProfit(b),result:b.result,struct:displayStructure(b)}))
   };
   const analysis=await callClaude(
-    `Tu génères le contenu d'une "Carte BetTrack" pour un parieur. Réponds UNIQUEMENT en JSON valide:
-{"score":75,"rank":"Gold","percentile":68,"biases":[{"icon":"🔁","text":"Tu paries plus après une perte"},{"icon":"⚡","text":"3 paris impulsifs détectés"}],"insoliteFact":"Ton pari le plus fou : PSG vs Bayern à ×4.20 pour 50€","profil":"[3-4 paragraphes analyse profil parieur, forces, faiblesses, conseil]"}
-Score 0-100 basé sur ROI (50%), cote moy pondérée (30%), taux réussite (20%) vs un parieur moyen (ROI -5%, cote 1.85, 45% réussite).
+    `Tu génères le contenu d'une "Carte BetTrack" pour un parieur sportif. Réponds UNIQUEMENT en JSON valide (pas de markdown, pas de backticks):
+{"score":75,"rank":"Gold","percentile":68,"biases":[{"icon":"🔁","text":"Tu paries plus après une perte"},{"icon":"⚡","text":"Biais sur les favoris maison"}],"insoliteFact":"Ton pari le plus fou : PSG vs Bayern à ×4.20 pour 50€","profilLines":[{"icon":"💪","color":"#c8ff57","label":"Force","text":"Ta vraie force : les paris simples avec ROI +18%"},{"icon":"📉","color":"#ff5770","label":"Faiblesse","text":"Les combinés te coûtent en moyenne -22€ chacun"},{"icon":"🎯","color":"#57c8ff","label":"Pattern","text":"Tu bats les bookmakers quand tu joues les outsiders"},{"icon":"⭐","color":"#d4aaff","label":"Equipe fétiche","text":"PSG : 8 paris, 75% réussite. Ton équipe porte-bonheur"},{"icon":"🔥","color":"#ff9957","label":"Conseil","text":"Mise max 5% bankroll par pari. Tu joues trop gros sur les coups de folie"}]}
+Score 0-100 basé sur ROI(50%), cote moy pondérée(30%), taux réussite(20%) vs moyenne (ROI -5%, cote 1.85, 45%).
 Rangs: 0-40 Bronze, 41-60 Silver, 61-80 Gold, 81-100 Elite.
-Percentile: estimation vs parieur moyen.`,
-    `Données: ${JSON.stringify(payload,null,2)}`,1200
+profilLines: 5 lignes courtes, percutantes, personnalisées, qu'on a envie de partager. Phrases chocs type story Instagram. Chaque ligne a icon+color+label+text.`,
+    `Données: ${JSON.stringify(payload,null,2)}`,1400
   );
   try{return extractJSON(analysis);}catch{return null;}
 }
@@ -671,7 +763,7 @@ function BetDetailModal({ bet, onClose, onDelete, onUpdate, allTags, objectives 
   const [savingObjectif, setSavingObjectif] = useState(false);
   const profit = betProfit(bet);
   const tagColor = bet.tag==="SAFE"?"var(--safe)":bet.tag==="FUN"?"var(--fun)":"var(--accent2)";
-  const isMymatch = bet.bet_structure==="mymatch";
+  const isMymatch = false; // mymatch is now treated as simple
 
   const handleSaveTag = async () => {
     setSavingTag(true);
@@ -740,7 +832,7 @@ function BetDetailModal({ bet, onClose, onDelete, onUpdate, allTags, objectives 
           <div className="detail-section">
             <div className="detail-section-title">Financier</div>
             <div className="detail-grid">
-              {!isMymatch&&<div className="detail-item"><div className="detail-item-label">Cote totale</div><div className="detail-item-value" style={{color:'var(--accent)'}}>×{fmt(bet.total_odd)}</div></div>}
+              {bet.total_odd&&bet.total_odd>1&&<div className="detail-item"><div className="detail-item-label">Cote totale</div><div className="detail-item-value" style={{color:'var(--accent)'}}>×{fmt(bet.total_odd)}</div></div>}
               <div className="detail-item"><div className="detail-item-label">{bet.is_freebet?"Freebet":"Mise"}</div><div className="detail-item-value">{fmt(bet.stake)}€</div></div>
               <div className="detail-item"><div className="detail-item-label">Gain brut</div><div className="detail-item-value">{fmt(bet.actual_win)}€</div></div>
               <div className="detail-item"><div className="detail-item-label">Profit net</div><div className="detail-item-value" style={{color:profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(profit)}</div></div>
@@ -753,15 +845,18 @@ function BetDetailModal({ bet, onClose, onDelete, onUpdate, allTags, objectives 
               <div className="detail-section-title">Sélections</div>
               {bet.selections.map((s,i)=>{
                 const isNeg=s.negated||s.selection_type?.includes("— Non");
-                const showOdd=!isMymatch&&s.odd&&s.odd>1;
+                const showOdd=s.odd&&s.odd>1;
                 return(
-                  <div key={i} className="selection-detail" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
+                  <div key={i} className="selection-detail" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:s.sel_result==="win"?{borderColor:'rgba(87,255,158,0.25)'}:s.sel_result==="loss"?{borderColor:'rgba(255,87,112,0.25)'}:{}}>
                     <div className="sel-top">
                       <div style={{flex:1}}>
                         <div className="sel-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
                         <div className="sel-type">{s.selection_type}{s.sel_type&&s.sel_type!=="autre"&&<span style={{color:'var(--accent2)',fontSize:10,marginLeft:4}}>· {s.sel_type}</span>}</div>
                       </div>
-                      {showOdd&&<div className="sel-odd-big">×{fmt(s.odd)}</div>}
+                      <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                        {s.sel_result&&<span style={{fontSize:11,fontWeight:800,color:s.sel_result==="win"?"var(--win)":"var(--loss)",fontFamily:'var(--font-head)'}}>{s.sel_result==="win"?"✓":"✗"}</span>}
+                        {showOdd&&<div className="sel-odd-big">×{fmt(s.odd)}</div>}
+                      </div>
                     </div>
                   </div>
                 );
@@ -865,11 +960,11 @@ function ManualImportForm({ bets, addBet, existingTags, objectives, onDone, onCa
       <div className="card">
         <div className="card-title">Paris</div>
         <div className="field-row">
-          <div className="field-group"><div className="field-label">Structure</div><select className="field-input" value={d.bet_structure} onChange={e=>upd("bet_structure",e.target.value)}><option value="simple">Simple</option><option value="combiné">Combiné</option><option value="mymatch">MyMatch</option></select></div>
+          <div className="field-group"><div className="field-label">Structure</div><select className="field-input" value={d.bet_structure} onChange={e=>upd("bet_structure",e.target.value)}><option value="simple">Simple</option><option value="combiné">Combiné</option></select></div>
           <div className="field-group"><div className="field-label">Résultat</div><select className="field-input" value={d.result} onChange={e=>upd("result",e.target.value)}><option value="win">Gagné</option><option value="loss">Perdu</option></select></div>
         </div>
         <div className="field-row">
-          {d.bet_structure!=="mymatch"&&<div className="field-group"><div className="field-label">Cote</div><input className="field-input" type="number" step="0.01" value={d.total_odd} onChange={e=>upd("total_odd",e.target.value)}/></div>}
+          <div className="field-group"><div className="field-label">Cote</div><input className="field-input" type="number" step="0.01" value={d.total_odd} onChange={e=>upd("total_odd",e.target.value)}/></div>
           <div className="field-group"><div className="field-label">Mise (€)</div><input className="field-input" type="number" step="0.5" value={d.stake} onChange={e=>upd("stake",e.target.value)}/></div>
         </div>
         <div className="field-group"><div className="field-label">Gain réel (€) <span style={{color:'var(--text3)',fontWeight:400}}>auto si vide</span></div><input className="field-input" type="number" step="0.01" value={d.actual_win} onChange={e=>upd("actual_win",e.target.value)}/></div>
@@ -1004,7 +1099,7 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
 
   if(mode==="multi"&&queue.length>0&&extracted){
     const currentItem=queue[queueIdx];
-    const isMymatch=extracted.bet_structure==="mymatch";
+    const isMymatch=false; // mymatch treated as simple
     return(
       <div>
         {queue.length>1&&(
@@ -1056,11 +1151,11 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
         <div className="card">
           <div className="card-title">Structure & Résultat</div>
           <div className="field-row">
-            <div className="field-group"><div className="field-label">Structure</div><select className="field-input" value={extracted.bet_structure||"simple"} onChange={e=>upd("bet_structure",e.target.value)}><option value="simple">Simple</option><option value="combiné">Combiné</option><option value="mymatch">MyMatch</option></select></div>
+            <div className="field-group"><div className="field-label">Structure</div><select className="field-input" value={extracted.bet_structure==="mymatch"?"simple":extracted.bet_structure||"simple"} onChange={e=>upd("bet_structure",e.target.value)}><option value="simple">Simple</option><option value="combiné">Combiné</option></select></div>
             <div className="field-group"><div className="field-label">Résultat</div><select className="field-input" value={extracted.result||"win"} onChange={e=>upd("result",e.target.value)}><option value="win">Gagné</option><option value="loss">Perdu</option></select></div>
           </div>
           <div className="field-row">
-            {!isMymatch&&<div className="field-group"><div className="field-label">Cote totale</div><input className="field-input" type="number" step="0.01" value={extracted.total_odd||""} onChange={e=>upd("total_odd",parseFloat(e.target.value))}/></div>}
+            <div className="field-group"><div className="field-label">Cote totale</div><input className="field-input" type="number" step="0.01" value={extracted.total_odd||""} onChange={e=>upd("total_odd",parseFloat(e.target.value))}/></div>
             <div className="field-group"><div className="field-label">{isFreebet?"Valeur freebet (€)":"Mise (€)"}</div><input className="field-input" type="number" step="0.5" value={extracted.stake||""} onChange={e=>upd("stake",parseFloat(e.target.value))}/></div>
           </div>
           <div className="field-group"><div className="field-label">Gain réel (€)</div><input className="field-input" type="number" step="0.01" value={extracted.actual_win||""} onChange={e=>upd("actual_win",parseFloat(e.target.value))}/></div>
@@ -1075,7 +1170,7 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
             <div className="card-title">Sélections ({extracted.selections.length})</div>
             {extracted.selections.map((s,i)=>{
               const isNeg=s.negated||s.selection_type?.includes("— Non");
-              const showOdd=!isMymatch&&s.odd&&s.odd>1;
+              const showOdd=s.odd&&s.odd>1;
               return(
                 <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
                   <div className="selection-left">
@@ -1083,15 +1178,20 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
                     <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2,flexWrap:'wrap'}}>
                       <div className="selection-type">{s.selection_type}</div>
                       {/* MyMatch: inline sel_type selector */}
-                      {isMymatch&&(
-                        <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
+                      <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
                           value={s.sel_type||"autre"}
                           onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_type:e.target.value};upd("selections",sels);}}>
-                          {MYMATCH_SEL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-                          <option value="autre">autre</option>
+                          {ALL_SEL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                        </select>
+                      {extracted.bet_structure==="combiné"&&(
+                        <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:s.sel_result==="win"?"var(--win)":s.sel_result==="loss"?"var(--loss)":"var(--text3)",fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
+                          value={s.sel_result||""}
+                          onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_result:e.target.value||null};upd("selections",sels);}}>
+                          <option value="">Résultat ?</option>
+                          <option value="win">✓ Gagnée</option>
+                          <option value="loss">✗ Perdue</option>
                         </select>
                       )}
-                      {!isMymatch&&s.sel_type&&s.sel_type!=="autre"&&<span style={{color:'var(--accent2)',fontSize:10,fontWeight:700}}>· {s.sel_type}</span>}
                     </div>
                   </div>
                   {showOdd&&<div className="selection-odd">×{fmt(s.odd)}</div>}
@@ -1245,7 +1345,7 @@ function BetsTab({ bets, onDelete, onUpdate, objectives }) {
               <div className="bet-row-left">
                 <div className="bet-row-type">
                   <span>{sportEmoji[bet.sport]||"🎯"}</span>
-                  <span>{bet.bet_structure==="simple"?"Simple":bet.bet_structure==="combiné"?"Combiné":"MyMatch"}</span>
+                  <span>{displayStructure(bet)==="simple"?"Simple":"Combiné"}</span>
                   {bet.is_freebet&&<span className="freebet-tag" style={{fontSize:9,padding:'1px 4px'}}>FB</span>}
                   {bet.tag&&bet.tag!=="SAFE"&&bet.tag!=="FUN"&&<span style={{fontSize:10,color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700}}>{bet.tag}</span>}
                   {bet.objectif_id&&<span style={{fontSize:10,color:'var(--accent)',fontFamily:'var(--font-head)',fontWeight:700}}>🎯</span>}
@@ -1253,7 +1353,7 @@ function BetsTab({ bets, onDelete, onUpdate, objectives }) {
                 <div className="bet-row-meta">{bet.sport} · {comboCompetition(bet)||bet.team_1} · {bet.date}</div>
               </div>
               <div className="bet-row-right">
-                {bet.bet_structure!=="mymatch"&&<div className="bet-row-odd">×{fmt(bet.total_odd)}</div>}
+                {bet.total_odd&&bet.total_odd>1&&<div className="bet-row-odd">×{fmt(bet.total_odd)}</div>}
                 <div className="bet-row-gain" style={{color:profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(profit)}</div>
               </div>
             </div>
@@ -1472,10 +1572,14 @@ function DashboardTab({ bets }) {
   const freebets=bets.filter(b=>b.is_freebet);
   const allTags=[...new Set(bets.map(b=>b.tag).filter(Boolean))];
   const tagRows=allTags.map(t=>{const sub=bets.filter(b=>b.tag===t);const st=computeStats(sub);return{label:t,count:sub.length,rate:st.rate,profit:st.profit,roi:st.roi};}).sort((a,b)=>b.profit-a.profit);
-  const structureRows=["simple","combiné","mymatch"].map(str=>{const sub=bets.filter(b=>b.bet_structure===str);if(!sub.length)return null;const st=computeStats(sub);return{label:str==="simple"?"Simple":str==="combiné"?"Combiné":"MyMatch",count:sub.length,rate:st.rate,profit:st.profit,roi:st.roi};}).filter(Boolean);
+  const structureRows=(()=>{const simpleB=bets.filter(b=>b.bet_structure==="simple"||b.bet_structure==="mymatch");const comboB=bets.filter(b=>b.bet_structure==="combiné");const rows=[];if(simpleB.length){const st=computeStats(simpleB);rows.push({label:"Simple",count:simpleB.length,rate:st.rate,profit:st.profit,roi:st.roi});}if(comboB.length){const st=computeStats(comboB);rows.push({label:"Combiné",count:comboB.length,rate:st.rate,profit:st.profit,roi:st.roi});}return rows;})();
   const sportRows=[...new Set(bets.map(b=>b.sport).filter(Boolean))].map(sp=>{const sub=bets.filter(b=>b.sport===sp);const st=computeStats(sub);return{label:sp,count:sub.length,rate:st.rate,profit:st.profit,roi:st.roi};}).sort((a,b)=>b.profit-a.profit);
   const allSels=getAllSelections(bets);
   const selTypeRows=getSelGroupStats(allSels,s=>s._selType);
+  // For combinés: individual selection success
+  const comboSels=getAllSelections(bets.filter(b=>b.bet_structure==="combiné"));
+  const comboSelResults=comboSels.filter(s=>s.sel_result!=null);
+  const comboSelRateByType=comboSelResults.length>0?getSelGroupStatsIndividual(comboSelResults,s=>s._selType):[];
   // Competition: normalize and group properly
   const normalizedSels=allSels.map(sel=>({...sel,_competition:normalizeCompetition(sel._competition||"")||normalizeCompetition(sel._bet?.competition||"")||""}));
   const compRows=getSelGroupStats(normalizedSels.filter(s=>s._competition),s=>s._competition).slice(0,12);
@@ -1523,6 +1627,12 @@ function DashboardTab({ bets }) {
         {allSels.length>0&&(
           <StatSection title="🎯 Par type de sélection">
             <SelTable rows={selTypeRows} label="Type"/>
+            {comboSelRateByType.length>0&&(
+              <div style={{marginTop:8}}>
+                <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600,marginBottom:6}}>Réussite individuelle dans les combinés</div>
+                <SelTable rows={comboSelRateByType} label="Type"/>
+              </div>
+            )}
           </StatSection>
         )}
 
@@ -1604,7 +1714,77 @@ function DashboardTab({ bets }) {
             </div>
           </StatSection>
         )}
+
+        <StatSection title="🔍 Recherche par équipe / joueur" defaultOpen={false}>
+          <TeamPlayerSearch bets={bets}/>
+        </StatSection>
       </div>
+    </div>
+  );
+}
+
+// ─── TEAM/PLAYER SEARCH ───────────────────────────────────────────────────────
+function TeamPlayerSearch({ bets }) {
+  const [query, setQuery] = useState("");
+  const [submitted, setSubmitted] = useState("");
+
+  const doSearch = () => setSubmitted(query.trim());
+
+  const { bets: matchedBets, selStats } = submitted ? getEntityStats(bets, submitted) : {bets:[], selStats:[]};
+  const s = submitted ? computeStats(matchedBets) : null;
+
+  return(
+    <div>
+      <div style={{display:'flex',gap:8,marginBottom:12}}>
+        <input className="field-input" value={query} onChange={e=>setQuery(e.target.value)}
+          placeholder="PSG, Mbappé, Barcelona…" style={{flex:1}}
+          onKeyDown={e=>e.key==="Enter"&&doSearch()}/>
+        <button onClick={doSearch} style={{padding:'9px 14px',background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:'var(--radius-sm)',fontFamily:'var(--font-head)',fontSize:12,fontWeight:800,cursor:'pointer',flexShrink:0}}>Chercher</button>
+      </div>
+      {submitted&&matchedBets.length===0&&(
+        <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'14px 0'}}>Aucun pari trouvé pour "{submitted}"</div>
+      )}
+      {submitted&&matchedBets.length>0&&s&&(
+        <div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:10}}>
+            <div className="stat-card"><div className="stat-label">Paris joués</div><div className="stat-value neutral">{s.total}</div></div>
+            <div className="stat-card"><div className="stat-label">Réussite</div><div className={`stat-value ${s.rate>=50?'positive':'negative'}`}>{fmt(s.rate,0)}%</div></div>
+            <div className="stat-card"><div className="stat-label">Profit</div><div className={`stat-value ${s.profit>=0?'positive':'negative'}`}>{fmtEuro(s.profit)}</div></div>
+            <div className="stat-card"><div className="stat-label">ROI</div><div className={`stat-value ${s.roi!=null?(s.roi>=0?'positive':'negative'):'neutral'}`}>{s.roi!=null?`${s.roi>=0?'+':''}${fmt(s.roi,1)}%`:"—"}</div></div>
+          </div>
+          {selStats.length>0&&(
+            <div className="card" style={{padding:0,overflow:'hidden',marginBottom:10}}>
+              <table className="data-table">
+                <thead><tr><th>Type de sél.</th><th style={{textAlign:'center'}}>Nb</th><th style={{textAlign:'center'}}>Réussite</th></tr></thead>
+                <tbody>
+                  {selStats.map((r,i)=>(
+                    <tr key={i}>
+                      <td className="num">{r.label}</td>
+                      <td style={{textAlign:'center',color:'var(--text2)'}}>{r.total}</td>
+                      <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)'}}>{r.known>0?`${fmt(r.rate,0)}%`:"—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div style={{fontSize:10,color:'var(--text3)',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600}}>Paris concernés</div>
+          {matchedBets.slice(0,10).map(bet=>{
+            const profit=betProfit(bet);
+            return(
+              <div key={bet.id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:'9px 11px',marginBottom:6,display:'flex',alignItems:'center',gap:9}}>
+                <div style={{width:22,height:22,borderRadius:'50%',background:bet.result==="win"?"rgba(87,255,158,0.15)":"rgba(255,87,112,0.12)",display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:bet.result==="win"?"var(--win)":"var(--loss)",flexShrink:0}}>{bet.result==="win"?"✓":"✕"}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text)'}}>{bet.team_1} vs {bet.team_2}</div>
+                  <div style={{fontSize:10,color:'var(--text3)'}}>{bet.date} · {displayStructure(bet)==="simple"?"Simple":"Combiné"} · ×{fmt(bet.total_odd)}</div>
+                </div>
+                <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:profit>=0?'var(--win)':'var(--loss)',flexShrink:0}}>{fmtEuro(profit)}</div>
+              </div>
+            );
+          })}
+          {matchedBets.length>10&&<div style={{textAlign:'center',fontSize:11,color:'var(--text3)',padding:'6px 0'}}>+{matchedBets.length-10} autres paris</div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -1646,7 +1826,7 @@ function BetTrackCardModal({ cardData, username, onClose, onSave }) {
       // Header
       drawText("Bet",32,52,{font:"Inter",weight:800,size:28,color:"#f0f0f8"});
       drawText("Track",32+42,52,{font:"Inter",weight:800,size:28,color:"#c8ff57"});
-      drawText(`@${username}`,32,76,{size:12,color:"#555570"});
+      drawText(`@${username}`,32,78,{font:"Inter",weight:700,size:16,color:"#8888aa"});
       const now=new Date();
       drawText(`${MONTH_SHORT[now.getMonth()]} ${now.getFullYear()}`,W-32,52,{size:12,color:"#555570",align:"right"});
 
@@ -1720,24 +1900,49 @@ function BetTrackCardModal({ cardData, username, onClose, onSave }) {
     }
 
     else {
-      // Page 2 — Profil textuel
+      // Page 2 — Profil visuel (story shareable)
       roundRect(0,0,W,H,0,"#0a0a0f");
-      drawText("Bet",32,52,{font:"Inter",weight:800,size:24,color:"#f0f0f8"});
-      drawText("Track",32+36,52,{font:"Inter",weight:800,size:24,color:"#c8ff57"});
-      drawText("Ton profil de parieur",32,76,{size:12,color:"#555570"});
+      // Gradient bg
+      const g2=ctx.createLinearGradient(0,0,0,H);
+      g2.addColorStop(0,"rgba(87,200,255,0.06)");g2.addColorStop(0.5,"rgba(0,0,0,0)");g2.addColorStop(1,"rgba(200,255,87,0.04)");
+      roundRect(0,0,W,H,0,g2);
 
-      // Divider
-      ctx.strokeStyle="#252530";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(32,90);ctx.lineTo(W-32,90);ctx.stroke();
+      // Header
+      drawText("Bet",32,52,{font:"Inter",weight:800,size:22,color:"#f0f0f8"});
+      drawText("Track",32+33,52,{font:"Inter",weight:800,size:22,color:"#c8ff57"});
+      const now2=new Date();
+      drawText(`@${username} · ${MONTH_SHORT[now2.getMonth()]} ${now2.getFullYear()}`,W-32,52,{size:11,color:"#555570",align:"right"});
+      drawText("MON BILAN DE PARIEUR",32,76,{font:"Inter",weight:700,size:10,color:"#555570"});
+      ctx.strokeStyle="#252530";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(32,85);ctx.lineTo(W-32,85);ctx.stroke();
 
-      // Profile text — wrap
-      const profil=cardData.profil||"Analyse en cours…";
-      ctx.font=`400 13px DM Sans, sans-serif`;ctx.fillStyle="#8888aa";ctx.textAlign="left";
-      const pW=W-64,pWords=profil.split(' ');let pLines=[],pLine='';
-      pWords.forEach(w=>{const test=pLine?`${pLine} ${w}`:w;if(ctx.measureText(test).width>pW){pLines.push(pLine);pLine=w;}else pLine=test;});
-      pLines.push(pLine);
-      pLines.slice(0,40).forEach((l,i)=>ctx.fillText(l,32,114+i*20));
+      const lines=cardData.profilLines||[
+        {icon:"💪",color:"#c8ff57",label:"Force",text:"Données insuffisantes pour l'analyse"},
+        {icon:"🔥",color:"#57c8ff",label:"Conseil",text:"Importe plus de paris pour débloquer l'analyse complète"}
+      ];
 
-      drawText("BetTrack · ta carte de parieur",W/2,H-30,{size:11,color:"#333345",align:"center"});
+      lines.slice(0,5).forEach((line,i)=>{
+        const cardY=98+i*158;
+        roundRect(32,cardY,W-64,145,14,"#111118");
+        ctx.strokeStyle=line.color+"33";ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(32,cardY,W-64,145,14);ctx.stroke();
+
+        // Icon circle
+        roundRect(52,cardY+18,48,48,24,line.color+"22");
+        drawText(line.icon,76,cardY+49,{size:22,align:"center"});
+
+        // Label badge
+        roundRect(114,cardY+18,W-32-114,22,5,line.color+"18");
+        drawText(line.label.toUpperCase(),114+8,cardY+33,{font:"Inter",weight:700,size:9,color:line.color});
+
+        // Text — wrap in card
+        const tW=W-32-114-16;
+        ctx.font=`600 14px Inter, sans-serif`;ctx.fillStyle="#f0f0f8";ctx.textAlign="left";
+        const tw=line.text,twWords=tw.split(' ');let tLines=[],tLine='';
+        twWords.forEach(w=>{const test=tLine?`${tLine} ${w}`:w;if(ctx.measureText(test).width>tW){tLines.push(tLine);tLine=w;}else tLine=test;});
+        tLines.push(tLine);
+        tLines.slice(0,4).forEach((l,j)=>ctx.fillText(l,114+8,cardY+52+j*20));
+      });
+
+      drawText("BetTrack · partage ta carte de parieur",W/2,H-30,{size:11,color:"#333345",align:"center"});
     }
 
     setRendered(true);
@@ -1745,10 +1950,17 @@ function BetTrackCardModal({ cardData, username, onClose, onSave }) {
 
   const handleDownload=()=>{
     if(!canvasRef.current)return;
-    const link=document.createElement('a');
-    link.download=`bettrack-carte-p${page}.png`;
-    link.href=canvasRef.current.toDataURL('image/png');
-    link.click();
+    const dataUrl=canvasRef.current.toDataURL('image/png');
+    // iOS Safari: open in new tab → user long-presses to save
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+    if(isIOS){
+      const w=window.open();if(w){w.document.write(`<img src="${dataUrl}" style="max-width:100%;"/>`);w.document.title="Carte BetTrack";}
+    } else {
+      const link=document.createElement('a');
+      link.download=`bettrack-carte-p${page}.png`;
+      link.href=dataUrl;
+      link.click();
+    }
     if(onSave)onSave();
   };
 
@@ -1766,8 +1978,11 @@ function BetTrackCardModal({ cardData, username, onClose, onSave }) {
             <button className={`tab-switch-btn ${page===1?'active':''}`} onClick={()=>setPage(1)}>Page 1 — Score</button>
             <button className={`tab-switch-btn ${page===2?'active':''}`} onClick={()=>setPage(2)}>Page 2 — Profil</button>
           </div>
-          {rendered&&<button className="btn-primary" onClick={handleDownload}>⬇ Enregistrer sur mon téléphone</button>}
-          <div style={{fontSize:11,color:'var(--text3)',textAlign:'center',marginTop:7}}>1 carte par mois · inclus dans Analyse Premium</div>
+          {rendered&&<button className="btn-primary" onClick={handleDownload} style={{marginTop:8}}>⬇ Télécharger l'image</button>}
+          <div style={{fontSize:10,color:'var(--text3)',textAlign:'center',marginTop:6,lineHeight:1.5}}>
+            Sur iPhone : l'image s'ouvre dans un nouvel onglet → appui long → "Enregistrer l'image"<br/>
+            1 carte par mois · inclus dans Analyse Premium
+          </div>
         </div>
       </div>
     </div>
@@ -1875,7 +2090,7 @@ function InsightsTab({ bets, username }) {
             <div><div className="ai-response-title">Analyse personnalisée</div><div style={{fontSize:10,color:'var(--text3)'}}>{bets.length} paris analysés</div></div>
             <button onClick={handleAnalyze} style={{marginLeft:'auto',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,padding:'4px 9px',color:'var(--text2)',fontSize:10,cursor:'pointer',fontFamily:'var(--font-head)',fontWeight:700}}>↺</button>
           </div>
-          <div className="ai-response-body">{aiText}</div>
+          <div className="ai-response-body" dangerouslySetInnerHTML={{__html:parseMarkdown(aiText)}}/>
         </div>}
         {aiPhase==="error"&&<><div className="error-msg">❌ Erreur de connexion.</div><button className="btn-secondary" onClick={()=>setAiPhase("unlocked")}>Réessayer</button></>}
 
@@ -1904,7 +2119,7 @@ function InsightsTab({ bets, username }) {
         </div>
         <div style={{fontSize:11,color:'var(--text2)',marginBottom:10}}>Ex : "Combien de fois j'ai parié sur Dembélé ?" ou "Quel est mon pari le plus fou ?"</div>
         {qaHistory.map((m,i)=>(
-          <div key={i} className={`qa-bubble ${m.role}`}>{m.text}</div>
+          <div key={i} className={`qa-bubble ${m.role}`} dangerouslySetInnerHTML={{__html:m.role==="ai"?parseMarkdown(m.text):m.text}}/>
         ))}
         {qaLoading&&<div style={{textAlign:'center',padding:'8px 0'}}><div className="ai-typing"><div className="ai-dot"/><div className="ai-dot"/><div className="ai-dot"/></div></div>}
         {!qaUsedThisWeek||qaHistory.length>0?(
@@ -1939,18 +2154,30 @@ function InsightsTab({ bets, username }) {
 }
 
 // ─── OBJECTIFS TAB ────────────────────────────────────────────────────────────
-function ObjectifsTab({ bets, objectives, onAddObjectif, onDeleteObjectif }) {
+function ObjectifsTab({ bets, objectives, onAddObjectif, onDeleteObjectif, onUpdateObjectif }) {
   const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [name, setName] = useState("");
   const [startAmount, setStartAmount] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const resetForm = () => {setName("");setStartAmount("");setTargetAmount("");setDeadline("");setEditingId(null);setShowAdd(false);};
 
   const handleAdd = async () => {
     if(!name.trim()||!startAmount||!targetAmount){return;}
     setSaving(true);
-    await onAddObjectif({name:name.trim(),start_amount:parseFloat(startAmount),target_amount:parseFloat(targetAmount),created_at:new Date().toISOString()});
-    setName("");setStartAmount("");setTargetAmount("");setShowAdd(false);setSaving(false);
+    const obj={name:name.trim(),start_amount:parseFloat(startAmount),target_amount:parseFloat(targetAmount),created_at:new Date().toISOString()};
+    if(deadline) obj.deadline=deadline;
+    if(editingId){await onUpdateObjectif(editingId,obj);}
+    else{await onAddObjectif(obj);}
+    resetForm();setSaving(false);
+  };
+
+  const startEdit = (obj) => {
+    setEditingId(obj.id);setName(obj.name);setStartAmount(String(obj.start_amount));
+    setTargetAmount(String(obj.target_amount));setDeadline(obj.deadline||"");setShowAdd(true);
   };
 
   return(
@@ -1968,9 +2195,10 @@ function ObjectifsTab({ bets, objectives, onAddObjectif, onDeleteObjectif }) {
             <div className="field-group"><div className="field-label">Montant départ (€)</div><input className="field-input" type="number" value={startAmount} onChange={e=>setStartAmount(e.target.value)} placeholder="5"/></div>
             <div className="field-group"><div className="field-label">Objectif (€)</div><input className="field-input" type="number" value={targetAmount} onChange={e=>setTargetAmount(e.target.value)} placeholder="150"/></div>
           </div>
+          <div className="field-group"><div className="field-label">Date limite <span style={{color:'var(--text3)',fontWeight:400}}>(optionnel)</span></div><input className="field-input" type="date" value={deadline} onChange={e=>setDeadline(e.target.value)}/></div>
           <div style={{display:'flex',gap:7,marginTop:4}}>
-            <button onClick={handleAdd} disabled={saving} style={{flex:1,padding:'10px',background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:'var(--radius)',fontSize:12,fontWeight:800,cursor:'pointer',fontFamily:'var(--font-head)'}}>{saving?"…":"Créer l'objectif"}</button>
-            <button onClick={()=>setShowAdd(false)} style={{flex:1,padding:'10px',background:'transparent',border:'1px solid var(--border)',borderRadius:'var(--radius)',fontSize:12,fontWeight:600,color:'var(--text2)',cursor:'pointer',fontFamily:'var(--font-head)'}}>Annuler</button>
+            <button onClick={handleAdd} disabled={saving} style={{flex:1,padding:'10px',background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:'var(--radius)',fontSize:12,fontWeight:800,cursor:'pointer',fontFamily:'var(--font-head)'}}>{saving?"…":editingId?"Modifier l'objectif":"Créer l'objectif"}</button>
+            <button onClick={resetForm} style={{flex:1,padding:'10px',background:'transparent',border:'1px solid var(--border)',borderRadius:'var(--radius)',fontSize:12,fontWeight:600,color:'var(--text2)',cursor:'pointer',fontFamily:'var(--font-head)'}}>Annuler</button>
           </div>
         </div>
       )}
@@ -1996,13 +2224,25 @@ function ObjectifsTab({ bets, objectives, onAddObjectif, onDeleteObjectif }) {
 
         return(
           <div key={obj.id} className="card" style={{marginBottom:10}}>
-            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:8}}>
-              <div>
-                <div style={{fontFamily:'var(--font-head)',fontSize:14,fontWeight:800,color:'var(--text)',marginBottom:2}}>{done?"✅ ":""}{obj.name}</div>
-                <div style={{fontSize:11,color:'var(--text3)'}}>Départ : {fmt(obj.start_amount)}€ → Cible : {fmt(obj.target_amount)}€</div>
-              </div>
-              <button onClick={()=>onDeleteObjectif(obj.id)} style={{background:'transparent',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:14,padding:'2px 4px'}}>🗑</button>
-            </div>
+            {(()=>{
+              const expired=obj.deadline&&!done&&new Date(obj.deadline)<new Date();
+              return(
+                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:8}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:'var(--font-head)',fontSize:14,fontWeight:800,color:'var(--text)',marginBottom:2,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                      {done?"✅ ":expired?"⏰ ":""}{obj.name}
+                      {expired&&<span style={{fontSize:9,background:'rgba(255,87,112,0.1)',border:'1px solid rgba(255,87,112,0.25)',borderRadius:4,padding:'1px 6px',color:'var(--loss)',fontFamily:'var(--font-head)',fontWeight:700}}>EXPIRÉ</span>}
+                    </div>
+                    <div style={{fontSize:11,color:'var(--text3)'}}>Départ : {fmt(obj.start_amount)}€ → Cible : {fmt(obj.target_amount)}€</div>
+                    {obj.deadline&&<div style={{fontSize:10,color:expired?'var(--loss)':'var(--text3)',marginTop:2}}>{expired?"Deadline dépassée":"Deadline :"} {new Date(obj.deadline).toLocaleDateString('fr-FR')}</div>}
+                  </div>
+                  <div style={{display:'flex',gap:5,flexShrink:0}}>
+                    <button onClick={()=>startEdit(obj)} style={{background:'transparent',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:13,padding:'2px 4px'}}>✎</button>
+                    <button onClick={()=>onDeleteObjectif(obj.id)} style={{background:'transparent',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:14,padding:'2px 4px'}}>🗑</button>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
               <span style={{fontFamily:'var(--font-head)',fontSize:22,fontWeight:800,color:done?'var(--accent)':(current>obj.start_amount?'var(--win)':'var(--loss)')}}>
@@ -2097,7 +2337,8 @@ function useObjectives(username) {
   const save=(objs)=>{setObjectives(objs);localStorage.setItem(`bettrack:objectives:${username}`,JSON.stringify(objs));};
   const addObjectif=(obj)=>{const newObj={...obj,id:`obj_${Date.now()}`};save([...objectives,newObj]);};
   const deleteObjectif=(id)=>save(objectives.filter(o=>o.id!==id));
-  return{objectives,addObjectif,deleteObjectif};
+  const updateObjectif=(id,fields)=>save(objectives.map(o=>o.id===id?{...o,...fields}:o));
+  return{objectives,addObjectif,deleteObjectif,updateObjectif};
 }
 
 // ─── LOGIN SCREEN ────────────────────────────────────────────────────────────
@@ -2141,7 +2382,7 @@ function LoginScreen({ onLogin, onRegister }) {
 export default function App() {
   const { user, authReady, profile, login, register, logout, saveProfile } = useAuth();
   const { bets, storageReady, setBets, addBet, updateBet, deleteBet } = useUserBets(user);
-  const { objectives, addObjectif, deleteObjectif } = useObjectives(user);
+  const { objectives, addObjectif, deleteObjectif, updateObjectif } = useObjectives(user);
   const [tab, setTab] = useState("upload");
   const [showProfile, setShowProfile] = useState(false);
 
@@ -2171,7 +2412,7 @@ export default function App() {
         {tab==="bets"&&<BetsTab bets={bets} onDelete={deleteBet} onUpdate={updateBet} objectives={objectives}/>}
         {tab==="dashboard"&&<DashboardTab bets={bets}/>}
         {tab==="insights"&&<InsightsTab bets={bets} username={user}/>}
-        {tab==="objectifs"&&<ObjectifsTab bets={bets} objectives={objectives} onAddObjectif={addObjectif} onDeleteObjectif={deleteObjectif}/>}
+        {tab==="objectifs"&&<ObjectifsTab bets={bets} objectives={objectives} onAddObjectif={addObjectif} onDeleteObjectif={deleteObjectif} onUpdateObjectif={updateObjectif}/>}
       </div>
       <nav className="bottom-nav">
         {[["upload","📲","Import"],["bets","📋","Paris"],["dashboard","📊","Stats"],["insights","💡","Insights"],["objectifs","🎯","Objectifs"]].map(([key,icon,label])=>(
