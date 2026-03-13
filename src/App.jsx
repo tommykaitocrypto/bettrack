@@ -404,19 +404,33 @@ function getStreaks(bets){
 function normalizeSelType(raw){
   if(!raw) return "autre";
   const r=raw.toLowerCase();
+  // Doublé/triplé/quadruplé — y compris "marque 2 buts", "marque 3 buts", "2+ buts", "2 buts ou plus"
   if(r.includes("doublé")||r.includes("triplé")||r.includes("quadruplé")) return "doublé/triplé";
-  if(r.includes("passeur")||r.includes("passe décisive")||r.includes("joueur décisif")||r.includes("buteur")||r.includes("marquer")||r.includes("scorer")) return "joueur décisif";
-  if(r.includes("score exact")&&(r.includes("mi-temps")||r.includes("1ère")||r.includes("2ème"))) return "score exact MT";
+  if(/marque\s*[23]\s*buts?/.test(r)||/[23]\+?\s*buts?\s*(ou\s*plus)?/.test(r)||/marque\s*au\s*moins\s*[23]/.test(r)) return "doublé/triplé";
+  // Joueur décisif / passeur / buteur (1 but, marque exactement 1)
+  if(r.includes("passeur")||r.includes("passe décisive")) return "joueur décisif";
+  if(r.includes("joueur décisif")) return "joueur décisif";
+  if(/marque\s*(exactement\s*)?1\s*but/.test(r)||r.includes("buteur")||r.includes("marquer au moins 1")||r.includes("à marquer")) return "joueur décisif";
+  if(r.includes("scorer")) return "joueur décisif";
+  // Score exact MT
+  if(r.includes("score exact")&&(r.includes("mi-temps")||r.includes("mt")||r.includes("1ère")||r.includes("2ème")||r.includes("première")||r.includes("deuxième"))) return "score exact MT";
   if(r.includes("score exact")||r.includes("score précis")||r.includes("correct score")) return "score exact";
-  if(r.includes("qualification")) return "qualification";
-  if(r.includes("handicap")||r.includes("spread")) return "handicap";
-  if(r.includes("première équipe à marquer")||r.includes("1ère équipe à marquer")) return "1ère équipe à marquer";
+  if(r.includes("qualification")||r.includes("se qualifie")) return "qualification";
+  // Handicap — "écart de buts (handicap)", "victoire -1.5", "handicap -X"
+  if(r.includes("handicap")||r.includes("spread")||/\-[\d\.]+\s*(but|goal)/.test(r)) return "handicap";
+  // Écart buts (sans handicap)
   if(r.includes("écart")||r.includes("marge")) return "écart buts";
-  if((r.includes("nb buts")||r.includes("nombre de but"))&&(r.includes("mi-temps")||r.includes("1ère")||r.includes("2ème"))) return "nb buts MT";
-  if(r.includes("btts")||r.includes("les deux équipes")||r.includes("both teams")) return "les 2 marquent";
-  if(r.includes("clean sheet")||r.includes("sans encaisser")) return "clean sheet";
-  if(r.includes("nb buts")||r.includes("nombre de but")||r.includes("total buts")||r.includes("over")||r.includes("under")||r.includes("plus de")||r.includes("moins de")) return "nb buts";
-  if(r.includes("résultat")||r.includes("victoire")||r.includes("nul")||r.includes("défaite")||r.includes("gagnant")||r.includes("1x2")||r.includes("vainqueur")||r.includes("mi-temps")||r.includes("double chance")) return "résultat";
+  if(r.includes("première équipe à marquer")||r.includes("1ère équipe à marquer")||r.includes("first team to score")) return "1ère équipe à marquer";
+  // Nb buts MT
+  if((r.includes("buts")||r.includes("but")||r.includes("goal"))&&(r.includes("mi-temps")||r.includes(" mt ")||r.includes("1ère")||r.includes("première mi")||r.includes("2ème")||r.includes("deuxième mi"))) return "nb buts MT";
+  if(r.includes("btts")||r.includes("les deux équipes marquent")||r.includes("both teams to score")||r.includes("les 2 équipes")) return "les 2 marquent";
+  if(r.includes("clean sheet")||r.includes("sans encaisser")||r.includes("0 but encaissé")) return "clean sheet";
+  // Nb buts (over/under)
+  if(r.includes("over")||r.includes("under")||/[\+\-][\d\.]+\s*buts?/.test(r)||r.includes("plus de")||r.includes("moins de")||r.includes("au moins")||r.includes("au plus")) return "nb buts";
+  if(r.includes("nb buts")||r.includes("nombre de but")||r.includes("total buts")||r.includes("total goals")) return "nb buts";
+  // Résultat d'équipe
+  if(r.includes("victoire")||r.includes("gagne")||r.includes("nul")||r.includes("défaite")||r.includes("match nul")||r.includes("1x2")||r.includes("vainqueur")||r.includes("double chance")) return "résultat";
+  if(r.includes("résultat")||r.includes("gagnant")) return "résultat";
   return "autre";
 }
 
@@ -458,27 +472,28 @@ function getEntityStats(bets, query){
   const q = query.toLowerCase().trim();
   if(!q) return {bets:[], selStats:[]};
   
-  // Find bets where entity appears
+  // Find bets where entity appears (team_1, team_2, or in selections)
   const matchedBets = bets.filter(b=>{
-    if(b.team_1?.toLowerCase().includes(q)||b.team_2?.toLowerCase().includes(q)) return true;
+    if((b.team_1||"").toLowerCase().includes(q)) return true;
+    if((b.team_2||"").toLowerCase().includes(q)) return true;
     return (b.selections||[]).some(s=>
-      s.team?.toLowerCase().includes(q)||
-      s.player?.toLowerCase().includes(q)||
-      s.player_display?.toLowerCase().includes(q)
+      (s.team||"").toLowerCase().includes(q)||
+      (s.player||"").toLowerCase().includes(q)||
+      (s.player_display||"").toLowerCase().includes(q)
     );
   });
   
-  // Filter selections for this entity
+  // Filter selections relevant to this entity
   const allSels = getAllSelections(matchedBets);
   const entitySels = allSels.filter(s=>
-    s.team?.toLowerCase().includes(q)||
-    s.player?.toLowerCase().includes(q)||
-    s.player_display?.toLowerCase().includes(q)||
-    s._bet.team_1?.toLowerCase().includes(q)||
-    s._bet.team_2?.toLowerCase().includes(q)
+    (s.team||"").toLowerCase().includes(q)||
+    (s.player||"").toLowerCase().includes(q)||
+    (s.player_display||"").toLowerCase().includes(q)||
+    (s._bet.team_1||"").toLowerCase().includes(q)||
+    (s._bet.team_2||"").toLowerCase().includes(q)
   );
   
-  const selStats = getSelGroupStatsIndividual(entitySels, s=>s._selType);
+  const selStats = getSelGroupStatsIndividual(entitySels, s=>s._selType||"autre");
   return {bets:matchedBets, selStats};
 }
 
@@ -646,6 +661,11 @@ function extractJSON(text){
   throw new Error("Incomplete JSON");
 }
 
+function getWeekNum(d){
+  const jan1=new Date(d.getFullYear(),0,1);
+  return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+}
+
 function parseMarkdown(text){
   if(!text) return "";
   return text
@@ -713,7 +733,7 @@ profilLines: 5 lignes courtes, percutantes, personnalisées, qu'on a envie de pa
 }
 
 // ─── PROFILE MODAL ────────────────────────────────────────────────────────────
-function ProfileModal({ user, profile, onSave, onClose }) {
+function ProfileModal({ user, profile, onSave, onClose, onDeleteAll }) {
   const [favTeam, setFavTeam] = useState(profile?.fav_team||"");
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
@@ -742,8 +762,41 @@ function ProfileModal({ user, profile, onSave, onClose }) {
             <div style={{fontSize:11,color:'var(--text3)'}}>Abréviation reconnue automatiquement (PSG, OM, OL…)</div>
           </div>
           <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving?"Enregistrement…":"Enregistrer"}</button>
+          <ResetAccountSection onDeleteAll={onDeleteAll}/>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── RESET ACCOUNT ────────────────────────────────────────────────────────────
+function ResetAccountSection({ onDeleteAll }) {
+  const [step, setStep] = useState(0);
+  const [doing, setDoing] = useState(false);
+  if(!onDeleteAll) return null;
+  return(
+    <div style={{marginTop:16,paddingTop:14,borderTop:'1px solid var(--border)'}}>
+      {step===0&&<button onClick={()=>setStep(1)} style={{width:'100%',padding:'10px',background:'transparent',border:'1px solid rgba(255,87,112,0.2)',borderRadius:'var(--radius)',color:'var(--text3)',fontSize:11,fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}>🗑 Nettoyer le compte et recommencer à zéro</button>}
+      {step===1&&(
+        <div style={{background:'rgba(255,87,112,0.06)',border:'1px solid rgba(255,87,112,0.2)',borderRadius:'var(--radius)',padding:'12px'}}>
+          <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:'var(--loss)',marginBottom:5}}>⚠️ Supprimer tous les paris ?</div>
+          <div style={{fontSize:11,color:'var(--text2)',marginBottom:10,lineHeight:1.5}}>Tous tes paris seront définitivement supprimés. Cette action est irréversible.</div>
+          <div style={{display:'flex',gap:7}}>
+            <button onClick={()=>setStep(0)} style={{flex:1,padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text2)',fontSize:11,fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}>Annuler</button>
+            <button onClick={()=>setStep(2)} style={{flex:1,padding:'8px',background:'rgba(255,87,112,0.12)',border:'1px solid rgba(255,87,112,0.3)',borderRadius:8,color:'var(--loss)',fontSize:11,fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer'}}>Continuer →</button>
+          </div>
+        </div>
+      )}
+      {step===2&&(
+        <div style={{background:'rgba(255,87,112,0.1)',border:'2px solid rgba(255,87,112,0.4)',borderRadius:'var(--radius)',padding:'12px'}}>
+          <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:'var(--loss)',marginBottom:5}}>🚨 Confirmation finale</div>
+          <div style={{fontSize:11,color:'var(--text)',marginBottom:10,lineHeight:1.5}}>Action <strong>irréversible</strong>. Toute ta base de données de paris sera effacée.</div>
+          <div style={{display:'flex',gap:7}}>
+            <button onClick={()=>setStep(0)} style={{flex:1,padding:'8px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text2)',fontSize:11,fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}>Non, garder</button>
+            <button onClick={async()=>{setDoing(true);await onDeleteAll();setStep(0);setDoing(false);}} disabled={doing} style={{flex:1,padding:'8px',background:'var(--loss)',border:'none',borderRadius:8,color:'#0a0a0f',fontSize:11,fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer'}}>{doing?"…":"💥 Tout effacer"}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -851,7 +904,7 @@ function BetDetailModal({ bet, onClose, onDelete, onUpdate, allTags, objectives 
                     <div className="sel-top">
                       <div style={{flex:1}}>
                         <div className="sel-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
-                        <div className="sel-type">{s.selection_type}{s.sel_type&&s.sel_type!=="autre"&&<span style={{color:'var(--accent2)',fontSize:10,marginLeft:4}}>· {s.sel_type}</span>}</div>
+                        <div className="sel-type">{s.selection_type}{(()=>{const t=normalizeSelType(s.sel_type||s.selection_type);return t&&t!=="autre"?<span style={{color:'var(--accent2)',fontSize:10,marginLeft:4}}>· {t}</span>:null;})()}</div>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
                         {s.sel_result&&<span style={{fontSize:11,fontWeight:800,color:s.sel_result==="win"?"var(--win)":"var(--loss)",fontFamily:'var(--font-head)'}}>{s.sel_result==="win"?"✓":"✗"}</span>}
@@ -1179,7 +1232,7 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
                       <div className="selection-type">{s.selection_type}</div>
                       {/* MyMatch: inline sel_type selector */}
                       <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
-                          value={s.sel_type||"autre"}
+                          value={normalizeSelType(s.sel_type||s.selection_type)||"autre"}
                           onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_type:e.target.value};upd("selections",sels);}}>
                           {ALL_SEL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
                         </select>
@@ -1274,7 +1327,7 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
 }
 
 // ─── BETS TAB ─────────────────────────────────────────────────────────────────
-function BetsTab({ bets, onDelete, onUpdate, objectives }) {
+function BetsTab({ bets, onDelete, onUpdate, objectives, onDeleteAll }) {
   const [selected, setSelected] = useState(null);
   const [filterResult, setFilterResult] = useState("Tous");
   const [filterTag, setFilterTag] = useState("Tous");
@@ -1282,6 +1335,9 @@ function BetsTab({ bets, onDelete, onUpdate, objectives }) {
   const [showDateRange, setShowDateRange] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmReset2, setConfirmReset2] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const allTags=["Tous",...Array.from(new Set(bets.map(b=>b.tag).filter(Boolean))).sort()];
 
@@ -1360,6 +1416,35 @@ function BetsTab({ bets, onDelete, onUpdate, objectives }) {
           );
         })
       }
+      {bets.length>0&&!confirmReset&&(
+        <div style={{marginTop:16,paddingTop:14,borderTop:'1px solid var(--border)'}}>
+          <button onClick={()=>setConfirmReset(true)} style={{width:'100%',padding:'10px',background:'transparent',border:'1px solid rgba(255,87,112,0.2)',borderRadius:'var(--radius)',color:'var(--text3)',fontSize:11,fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}>
+            🗑 Nettoyer le compte et recommencer à zéro
+          </button>
+        </div>
+      )}
+      {confirmReset&&!confirmReset2&&(
+        <div style={{marginTop:16,background:'rgba(255,87,112,0.06)',border:'1px solid rgba(255,87,112,0.2)',borderRadius:'var(--radius)',padding:'14px'}}>
+          <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:'var(--loss)',marginBottom:6}}>⚠️ Supprimer TOUS les paris ?</div>
+          <div style={{fontSize:12,color:'var(--text2)',marginBottom:12,lineHeight:1.5}}>Cette action est irréversible. Tous tes paris ({bets.length}) seront définitivement supprimés.</div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>{setConfirmReset(false);}} style={{flex:1,padding:'10px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius)',color:'var(--text2)',fontSize:12,fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}>Annuler</button>
+            <button onClick={()=>setConfirmReset2(true)} style={{flex:1,padding:'10px',background:'rgba(255,87,112,0.12)',border:'1px solid rgba(255,87,112,0.3)',borderRadius:'var(--radius)',color:'var(--loss)',fontSize:12,fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer'}}>Oui, supprimer</button>
+          </div>
+        </div>
+      )}
+      {confirmReset2&&(
+        <div style={{marginTop:16,background:'rgba(255,87,112,0.1)',border:'2px solid rgba(255,87,112,0.4)',borderRadius:'var(--radius)',padding:'14px'}}>
+          <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:'var(--loss)',marginBottom:6}}>🚨 Dernière confirmation</div>
+          <div style={{fontSize:12,color:'var(--text)',marginBottom:12,lineHeight:1.5}}>Tu es <strong>absolument certain</strong> de vouloir effacer les {bets.length} paris ? Cette action est <strong>définitive</strong>.</div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>{setConfirmReset(false);setConfirmReset2(false);}} style={{flex:1,padding:'10px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius)',color:'var(--text2)',fontSize:12,fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}>Non, garder</button>
+            <button onClick={async()=>{setResetting(true);await onDeleteAll();setConfirmReset(false);setConfirmReset2(false);setResetting(false);}} disabled={resetting} style={{flex:1,padding:'10px',background:'var(--loss)',border:'none',borderRadius:'var(--radius)',color:'#0a0a0f',fontSize:12,fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer'}}>
+              {resetting?"Suppression…":"💥 Effacer tout"}
+            </button>
+          </div>
+        </div>
+      )}
       {selected&&<BetDetailModal bet={selected} onClose={()=>setSelected(null)} onDelete={onDelete?(id)=>{onDelete(id);setSelected(null);}:null} onUpdate={onUpdate} allTags={allTags.filter(t=>t!=="Tous")} objectives={objectives}/>}
     </div>
   );
@@ -1775,7 +1860,7 @@ function TeamPlayerSearch({ bets }) {
               <div key={bet.id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:'9px 11px',marginBottom:6,display:'flex',alignItems:'center',gap:9}}>
                 <div style={{width:22,height:22,borderRadius:'50%',background:bet.result==="win"?"rgba(87,255,158,0.15)":"rgba(255,87,112,0.12)",display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:bet.result==="win"?"var(--win)":"var(--loss)",flexShrink:0}}>{bet.result==="win"?"✓":"✕"}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text)'}}>{bet.team_1} vs {bet.team_2}</div>
+                  <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text)'}}>{bet.team_1||"?"} vs {bet.team_2||"?"}</div>
                   <div style={{fontSize:10,color:'var(--text3)'}}>{bet.date} · {displayStructure(bet)==="simple"?"Simple":"Combiné"} · ×{fmt(bet.total_odd)}</div>
                 </div>
                 <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:profit>=0?'var(--win)':'var(--loss)',flexShrink:0}}>{fmtEuro(profit)}</div>
@@ -1981,7 +2066,7 @@ function BetTrackCardModal({ cardData, username, onClose, onSave }) {
           {rendered&&<button className="btn-primary" onClick={handleDownload} style={{marginTop:8}}>⬇ Télécharger l'image</button>}
           <div style={{fontSize:10,color:'var(--text3)',textAlign:'center',marginTop:6,lineHeight:1.5}}>
             Sur iPhone : l'image s'ouvre dans un nouvel onglet → appui long → "Enregistrer l'image"<br/>
-            1 carte par mois · inclus dans Analyse Premium
+            5 cartes par semaine · inclus dans Analyse Premium
           </div>
         </div>
       </div>
@@ -2004,13 +2089,14 @@ function InsightsTab({ bets, username }) {
 
   // Check localStorage for Q&A and card usage
   useEffect(()=>{
-    const qaKey=`bettrack:qa_week:${username}`;
-    const cardKey=`bettrack:card_month:${username}`;
+    const qaKey=`bettrack:qa_count_week:${username}`;
+    const cardKey=`bettrack:card_count_week:${username}`;
     const now=new Date();
-    const weekStr=`${now.getFullYear()}-W${Math.ceil(now.getDate()/7)}`;
-    const monthStr=`${now.getFullYear()}-${now.getMonth()}`;
-    if(localStorage.getItem(qaKey)===weekStr)setQaUsedThisWeek(true);
-    if(localStorage.getItem(cardKey)===monthStr)setCardUsedThisMonth(true);
+    const weekStr=`${now.getFullYear()}-W${getWeekNum(now)}`;
+    const qaData=JSON.parse(localStorage.getItem(qaKey)||"{}");
+    const cardData2=JSON.parse(localStorage.getItem(cardKey)||"{}");
+    if(qaData.week===weekStr&&(qaData.count||0)>=5) setQaUsedThisWeek(true);
+    if(cardData2.week===weekStr&&(cardData2.count||0)>=5) setCardUsedThisMonth(true);
   },[username]);
 
   const handleAnalyze=async()=>{
@@ -2027,12 +2113,13 @@ function InsightsTab({ bets, username }) {
     try{
       const answer=await runQAQuery(bets,question);
       setQaHistory(h=>[...h,{role:"ai",text:answer}]);
-      if(!qaUsedThisWeek){
-        const now=new Date();
-        const weekStr=`${now.getFullYear()}-W${Math.ceil(now.getDate()/7)}`;
-        localStorage.setItem(`bettrack:qa_week:${username}`,weekStr);
-        setQaUsedThisWeek(true);
-      }
+      const now2=new Date();
+      const weekStr2=`${now2.getFullYear()}-W${getWeekNum(now2)}`;
+      const qaKey2=`bettrack:qa_count_week:${username}`;
+      const qaData2=JSON.parse(localStorage.getItem(qaKey2)||"{}");
+      const newCount=(qaData2.week===weekStr2?(qaData2.count||0):0)+1;
+      localStorage.setItem(qaKey2,JSON.stringify({week:weekStr2,count:newCount}));
+      if(newCount>=5) setQaUsedThisWeek(true);
     }catch{setQaHistory(h=>[...h,{role:"ai",text:"Erreur lors de la requête. Réessaie."}]);}
     setQaLoading(false);
   };
@@ -2048,9 +2135,12 @@ function InsightsTab({ bets, username }) {
 
   const handleCardSaved=()=>{
     const now=new Date();
-    const monthStr=`${now.getFullYear()}-${now.getMonth()}`;
-    localStorage.setItem(`bettrack:card_month:${username}`,monthStr);
-    setCardUsedThisMonth(true);
+    const weekStr=`${now.getFullYear()}-W${getWeekNum(now)}`;
+    const cardKey=`bettrack:card_count_week:${username}`;
+    const cardData3=JSON.parse(localStorage.getItem(cardKey)||"{}");
+    const newCount=(cardData3.week===weekStr?(cardData3.count||0):0)+1;
+    localStorage.setItem(cardKey,JSON.stringify({week:weekStr,count:newCount}));
+    if(newCount>=5) setCardUsedThisMonth(true);
   };
 
   if(bets.length===0)return<div className="empty-state"><div className="e-icon">💡</div><div className="e-title">Pas encore d'insights</div><div className="e-sub">Importez au moins 3 paris.</div></div>;
@@ -2097,10 +2187,10 @@ function InsightsTab({ bets, username }) {
         {/* Carte BetTrack — only shown if premium unlocked */}
         {(aiPhase==="unlocked"||aiPhase==="done")&&(
           <div style={{marginTop:14,borderTop:'1px solid var(--border)',paddingTop:14}}>
-            <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,marginBottom:5,display:'flex',alignItems:'center',gap:7}}>🃏 Carte BetTrack <span style={{fontSize:9,background:'linear-gradient(90deg,#c8ff57,#57c8ff)',color:'#0a0a0f',padding:'2px 7px',borderRadius:4,fontFamily:'var(--font-head)',fontWeight:800}}>1/mois</span></div>
+            <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,marginBottom:5,display:'flex',alignItems:'center',gap:7}}>🃏 Carte BetTrack <span style={{fontSize:9,background:'linear-gradient(90deg,#c8ff57,#57c8ff)',color:'#0a0a0f',padding:'2px 7px',borderRadius:4,fontFamily:'var(--font-head)',fontWeight:800}}>5/semaine</span></div>
             <div style={{fontSize:11,color:'var(--text2)',marginBottom:10}}>Score, biais, pari le plus fou · téléchargeable en story</div>
             {cardUsedThisMonth?(
-              <div className="qa-limit-badge">✅ Carte générée ce mois · disponible le mois prochain</div>
+              <div className="qa-limit-badge">✅ Carte générée ce mois · limite de 5 atteinte cette semaine</div>
             ):(
               <button onClick={handleGenerateCard} disabled={cardPhase==="loading"} style={{width:'100%',padding:'11px',background:'linear-gradient(90deg,rgba(200,255,87,0.15),rgba(87,200,255,0.15))',border:'1px solid rgba(200,255,87,0.25)',borderRadius:'var(--radius)',fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:'var(--text)',cursor:'pointer'}}>
                 {cardPhase==="loading"?<span style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8}}><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Génération…</span>:"Générer ma Carte BetTrack"}
@@ -2115,7 +2205,7 @@ function InsightsTab({ bets, username }) {
       <div className="card" style={{marginBottom:14}}>
         <div className="card-title" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <span>💬 Pose une question sur tes paris</span>
-          <span style={{fontSize:9,background:'rgba(255,153,87,0.1)',border:'1px solid rgba(255,153,87,0.2)',borderRadius:4,padding:'2px 6px',color:'var(--fun)',fontFamily:'var(--font-head)',fontWeight:700}}>1/semaine</span>
+          <span style={{fontSize:9,background:'rgba(255,153,87,0.1)',border:'1px solid rgba(255,153,87,0.2)',borderRadius:4,padding:'2px 6px',color:'var(--fun)',fontFamily:'var(--font-head)',fontWeight:700}}>5/semaine</span>
         </div>
         <div style={{fontSize:11,color:'var(--text2)',marginBottom:10}}>Ex : "Combien de fois j'ai parié sur Dembélé ?" ou "Quel est mon pari le plus fou ?"</div>
         {qaHistory.map((m,i)=>(
@@ -2132,7 +2222,7 @@ function InsightsTab({ bets, username }) {
           <div className="qa-limit-badge">Tu as utilisé ta question de la semaine. Reviens la semaine prochaine !</div>
         )}
         {qaUsedThisWeek&&qaHistory.length>0&&(
-          <div className="qa-limit-badge" style={{marginTop:7}}>Question de la semaine utilisée · reviens lundi</div>
+          <div className="qa-limit-badge" style={{marginTop:7}}>Question de la semaine utilisée · reviens la semaine prochaine</div>
         )}
       </div>
 
@@ -2322,7 +2412,8 @@ function useUserBets(username) {
   const updateBet=async(betId,fields)=>{await sbPatch("bets",`id=eq.${betId}&username=eq.${encodeURIComponent(username)}`,fields);setBetsState(prev=>prev.map(b=>b.id===betId?{...b,...fields}:b));};
   const setBets=(updater)=>{if(typeof updater==="function")setBetsState(prev=>updater(prev));else setBetsState(updater);};
   const deleteBet=async(betId)=>{await sbDelete("bets",`id=eq.${betId}&username=eq.${encodeURIComponent(username)}`);setBetsState(prev=>prev.filter(b=>b.id!==betId));};
-  return{bets,storageReady,setBets,addBet,updateBet,deleteBet};
+  const deleteAllBets=async()=>{await sbDelete("bets",`username=eq.${encodeURIComponent(username)}`);setBetsState([]);};
+  return{bets,storageReady,setBets,addBet,updateBet,deleteBet,deleteAllBets};
 }
 
 // ─── OBJECTIVES HOOK ──────────────────────────────────────────────────────────
@@ -2381,7 +2472,7 @@ function LoginScreen({ onLogin, onRegister }) {
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const { user, authReady, profile, login, register, logout, saveProfile } = useAuth();
-  const { bets, storageReady, setBets, addBet, updateBet, deleteBet } = useUserBets(user);
+  const { bets, storageReady, setBets, addBet, updateBet, deleteBet, deleteAllBets } = useUserBets(user);
   const { objectives, addObjectif, deleteObjectif, updateObjectif } = useObjectives(user);
   const [tab, setTab] = useState("upload");
   const [showProfile, setShowProfile] = useState(false);
@@ -2409,7 +2500,7 @@ export default function App() {
       </div>
       <div className="scroll-area">
         {tab==="upload"&&<UploadTab addBet={addBet} setBets={setBets} bets={bets} updateBet={updateBet} objectives={objectives}/>}
-        {tab==="bets"&&<BetsTab bets={bets} onDelete={deleteBet} onUpdate={updateBet} objectives={objectives}/>}
+        {tab==="bets"&&<BetsTab bets={bets} onDelete={deleteBet} onUpdate={updateBet} objectives={objectives} onDeleteAll={deleteAllBets}/>}
         {tab==="dashboard"&&<DashboardTab bets={bets}/>}
         {tab==="insights"&&<InsightsTab bets={bets} username={user}/>}
         {tab==="objectifs"&&<ObjectifsTab bets={bets} objectives={objectives} onAddObjectif={addObjectif} onDeleteObjectif={deleteObjectif} onUpdateObjectif={updateObjectif}/>}
@@ -2421,7 +2512,7 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {showProfile&&<ProfileModal user={user} profile={profile} onSave={saveProfile} onClose={()=>setShowProfile(false)}/>}
+      {showProfile&&<ProfileModal user={user} profile={profile} onSave={saveProfile} onClose={()=>setShowProfile(false)} onDeleteAll={deleteAllBets}/>}
     </div></>
   );
 }
