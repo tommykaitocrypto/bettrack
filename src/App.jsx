@@ -1282,50 +1282,46 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
             {extracted.selections.map((s,i)=>{
               const isNeg=s.negated||s.selection_type?.includes("— Non");
               const showOdd=s.odd&&s.odd>1;
+              const selType=normalizeSelType(s.sel_type||s.selection_type)||"autre";
+              const showThreshold=selType==="nb buts"||selType==="nb buts MT"||selType==="handicap";
               return(
-                {(()=>{
-                  const selType=normalizeSelType(s.sel_type||s.selection_type)||"autre";
-                  const showThreshold=selType==="nb buts"||selType==="nb buts MT"||selType==="handicap";
-                  return(
-                    <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
-                      <div className="selection-left">
-                        <div className="selection-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
-                        <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2,flexWrap:'wrap'}}>
-                          <div className="selection-type">{s.selection_type}</div>
-                          <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
-                              value={selType}
-                              onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_type:e.target.value};upd("selections",sels);}}>
-                              {ALL_SEL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-                            </select>
-                          {showThreshold&&(
-                            <div style={{display:'flex',alignItems:'center',gap:3}}>
-                              <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'2px 5px',color:s.sel_dir==="-"?"var(--loss)":"var(--win)",fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer',width:36}}
-                                value={s.sel_dir||"+"}
-                                onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_dir:e.target.value};upd("selections",sels);}}>
-                                <option value="+">+</option>
-                                <option value="-">−</option>
-                              </select>
-                              <input type="number" step="0.5" style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'2px 5px',color:'var(--text)',fontFamily:'var(--font-head)',fontWeight:700,width:48,outline:'none'}}
-                                value={s.sel_threshold||""}
-                                placeholder="2.5"
-                                onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_threshold:parseFloat(e.target.value)||null};upd("selections",sels);}}/>
-                            </div>
-                          )}
-                          {extracted.bet_structure==="combiné"&&(
-                            <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:s.sel_result==="win"?"var(--win)":s.sel_result==="loss"?"var(--loss)":"var(--text3)",fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
-                              value={s.sel_result||""}
-                              onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_result:e.target.value||null};upd("selections",sels);}}>
-                              <option value="">Résultat ?</option>
-                              <option value="win">✓ Gagnée</option>
-                              <option value="loss">✗ Perdue</option>
-                            </select>
-                          )}
+                <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
+                  <div className="selection-left">
+                    <div className="selection-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
+                    <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2,flexWrap:'wrap'}}>
+                      <div className="selection-type">{s.selection_type}</div>
+                      <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
+                          value={selType}
+                          onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_type:e.target.value};upd("selections",sels);}}>
+                          {ALL_SEL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                        </select>
+                      {showThreshold&&(
+                        <div style={{display:'flex',alignItems:'center',gap:3}}>
+                          <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'2px 5px',color:s.sel_dir==="-"?"var(--loss)":"var(--win)",fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer',width:36}}
+                            value={s.sel_dir||"+"}
+                            onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_dir:e.target.value};upd("selections",sels);}}>
+                            <option value="+">+</option>
+                            <option value="-">−</option>
+                          </select>
+                          <input type="number" step="0.5" style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'2px 5px',color:'var(--text)',fontFamily:'var(--font-head)',fontWeight:700,width:48,outline:'none'}}
+                            value={s.sel_threshold||""}
+                            placeholder="2.5"
+                            onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_threshold:parseFloat(e.target.value)||null};upd("selections",sels);}}/>
                         </div>
-                      </div>
-                      {showOdd&&<div className="selection-odd">×{fmt(s.odd)}</div>}
+                      )}
+                      {extracted.bet_structure==="combiné"&&(
+                        <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:s.sel_result==="win"?"var(--win)":s.sel_result==="loss"?"var(--loss)":"var(--text3)",fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
+                          value={s.sel_result||""}
+                          onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_result:e.target.value||null};upd("selections",sels);}}>
+                          <option value="">Résultat ?</option>
+                          <option value="win">✓ Gagnée</option>
+                          <option value="loss">✗ Perdue</option>
+                        </select>
+                      )}
                     </div>
-                  );
-                })()}
+                  </div>
+                  {showOdd&&<div className="selection-odd">×{fmt(s.odd)}</div>}
+                </div>
               );
             })}
           </div>
