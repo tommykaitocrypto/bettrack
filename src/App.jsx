@@ -467,34 +467,63 @@ function getSelGroupStatsIndividual(selections,keyFn){
   return Object.values(map).map(g=>({...g,rate:g.known>0?(g.wins/g.known)*100:0})).sort((a,b)=>b.total-a.total);
 }
 
-// Vue par équipe/joueur
+// Vue par équipe/joueur — séparation stricte équipe vs joueur
 function getEntityStats(bets, query){
   const q = query.toLowerCase().trim();
-  if(!q) return {bets:[], selStats:[]};
-  
-  // Find bets where entity appears (team_1, team_2, or in selections)
-  const matchedBets = bets.filter(b=>{
-    if((b.team_1||"").toLowerCase().includes(q)) return true;
-    if((b.team_2||"").toLowerCase().includes(q)) return true;
-    return (b.selections||[]).some(s=>
-      (s.team||"").toLowerCase().includes(q)||
-      (s.player||"").toLowerCase().includes(q)||
-      (s.player_display||"").toLowerCase().includes(q)
+  if(!q) return {bets:[], selStats:[], mode:"none"};
+
+  // Detect mode: is query a team (matches team_1/team_2) or a player (matches selections[].player)?
+  const matchesTeam = bets.some(b=>(b.team_1||"").toLowerCase().includes(q)||(b.team_2||"").toLowerCase().includes(q));
+  const matchesPlayer = bets.some(b=>(b.selections||[]).some(s=>(s.player||"").toLowerCase().includes(q)||(s.player_display||"").toLowerCase().includes(q)));
+
+  // Prefer player mode if query is player-like (no team match OR explicit player match)
+  // If both match → prefer team (teams are broader)
+  const mode = matchesPlayer && !matchesTeam ? "player" : "team";
+
+  let matchedBets, entitySels;
+  const allSels = getAllSelections(bets);
+
+  if(mode==="player"){
+    // Player mode: only bets where a selection has this player
+    matchedBets = bets.filter(b=>(b.selections||[]).some(s=>
+      (s.player||"").toLowerCase().includes(q)||(s.player_display||"").toLowerCase().includes(q)
+    ));
+    const allSelsMatched = getAllSelections(matchedBets);
+    entitySels = allSelsMatched.filter(s=>
+      (s.player||"").toLowerCase().includes(q)||(s.player_display||"").toLowerCase().includes(q)
     );
-  });
-  
-  // Filter selections relevant to this entity
-  const allSels = getAllSelections(matchedBets);
-  const entitySels = allSels.filter(s=>
-    (s.team||"").toLowerCase().includes(q)||
-    (s.player||"").toLowerCase().includes(q)||
-    (s.player_display||"").toLowerCase().includes(q)||
-    (s._bet.team_1||"").toLowerCase().includes(q)||
-    (s._bet.team_2||"").toLowerCase().includes(q)
-  );
-  
+  } else {
+    // Team mode: only bets where team_1 or team_2 matches — NOT via player selections
+    matchedBets = bets.filter(b=>
+      (b.team_1||"").toLowerCase().includes(q)||(b.team_2||"").toLowerCase().includes(q)
+    );
+    const allSelsMatched = getAllSelections(matchedBets);
+    // Filter selections for this team specifically (sel.team matches), not player sels
+    entitySels = allSelsMatched.filter(s=>(s.team||"").toLowerCase().includes(q));
+    // If no team-tagged selections, fall back to all sels of these bets (for stats)
+    if(entitySels.length===0) entitySels = allSelsMatched;
+  }
+
   const selStats = getSelGroupStatsIndividual(entitySels, s=>s._selType||"autre");
-  return {bets:matchedBets, selStats};
+  return {bets:matchedBets, selStats, mode};
+}
+
+// MyMatch combo stats: pour paris simples avec 2+ sélections sur même match
+function getMymatchCombos(bets){
+  const simpleBets = bets.filter(b=>(b.bet_structure==="simple"||b.bet_structure==="mymatch")&&(b.selections||[]).length>=2);
+  const comboCounts={};
+  simpleBets.forEach(bet=>{
+    const types=[...new Set((bet.selections||[]).map(s=>normalizeSelType(s.sel_type||s.selection_type)))].sort();
+    if(types.length<2) return;
+    const key=types.join(" + ");
+    if(!comboCounts[key]) comboCounts[key]={label:key,total:0,wins:0};
+    comboCounts[key].total++;
+    if(bet.result==="win") comboCounts[key].wins++;
+  });
+  return Object.values(comboCounts)
+    .map(c=>({...c,rate:c.total>0?c.wins/c.total*100:0}))
+    .sort((a,b)=>b.total-a.total)
+    .slice(0,10);
 }
 
 function getSelGroupStats(selections,keyFn){
@@ -568,6 +597,9 @@ Si une sélection affiche "Non" : inclus-le dans selection_type ET mets negated:
 ━━━ RÈGLE 7 — JOUEURS ━━━
 "player" : format "I.Nom" (ex: "Bradley Barcola"→"B.Barcola")
 "player_display" : nom complet tel qu'il apparaît
+BUTEURS MULTI-CHANCES : "Buteur Ruiz OU Hakimi OU Kvaratskhelia" → UNE SEULE sélection :
+  player_display = "F.Ruiz / A.Hakimi / K.Kvaratskhelia", player = "F.Ruiz / A.Hakimi / K.Kvaratskhelia", sel_type = "joueur décisif"
+  NE PAS créer une sélection par joueur.
 
 ━━━ RÈGLE 8 — ÉQUIPE PAR SÉLECTION ━━━
 Pour chaque sélection, "team" = l'équipe concernée par ce critère.
@@ -575,9 +607,14 @@ Ex: "Victoire PSG"→team:"PSG" ; "Mbappé buteur"→team:"",player:"K.Mbappé"
 
 ━━━ RÈGLE 9 — TYPE DE SÉLECTION ━━━
 sel_type parmi: "résultat"|"nb buts"|"nb buts MT"|"score exact"|"score exact MT"|"joueur décisif"|"doublé/triplé"|"handicap"|"qualification"|"écart buts"|"1ère équipe à marquer"|"les 2 marquent"|"clean sheet"|"autre"
+"marque 2 buts"/"2 buts ou plus"/"marque 3 buts" → sel_type="doublé/triplé". "marque 1 but"/"buteur" → sel_type="joueur décisif". "Écart de buts (handicap)"/"victoire -X" → sel_type="handicap".
+
+━━━ RÈGLE 10 — SEUIL & DIRECTION (nb buts / handicap) ━━━
+Pour sel_type "nb buts", "nb buts MT", "handicap" : ajoute sel_dir:"+" ou "-" et sel_threshold: valeur numérique.
+Ex: "Plus de 2.5 buts" → sel_dir:"+", sel_threshold:2.5 | "Moins de 1.5 buts" → sel_dir:"-", sel_threshold:1.5 | "PSG -1.5" → sel_dir:"-", sel_threshold:1.5
 
 ━━━ FORMAT JSON ━━━
-{"bet_ref":"","sport":"Football","bookmaker":"Winamax","competition":"","date":"YYYY-MM-DD","heure":"HH:MM","team_1":"","team_2":"","bet_structure":"simple|combiné","bet_category":"team|player|goals|combo","total_odd":1.5,"stake":10.0,"actual_win":0.0,"result":"win|loss","is_freebet":false,"selections":[{"team":"PSG","player":"","player_display":"","selection_type":"Victoire PSG","sel_type":"résultat","sel_result":null,"odd":1.38,"negated":false}]}`,
+{"bet_ref":"","sport":"Football","bookmaker":"Winamax","competition":"","date":"YYYY-MM-DD","heure":"HH:MM","team_1":"","team_2":"","bet_structure":"simple|combiné","bet_category":"team|player|goals|combo","total_odd":1.5,"stake":10.0,"actual_win":0.0,"result":"win|loss","is_freebet":false,"selections":[{"team":"PSG","player":"","player_display":"","selection_type":"Victoire PSG","sel_type":"résultat","sel_dir":null,"sel_threshold":null,"sel_result":null,"odd":1.38,"negated":false}]}`,
     messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mimeType,data:base64}},{type:"text",text:"Extrais le pari le plus complet visible sur cette image."}]}]
   })});
   const data=await r.json();
@@ -591,6 +628,16 @@ sel_type parmi: "résultat"|"nb buts"|"nb buts MT"|"score exact"|"score exact MT
       if(sel.player&&!sel.player.match(/^[A-Za-zÀ-ÿ]\./)){sel.player_display=sel.player_display||sel.player;sel.player=normalizePlayerName(sel.player);}
       if(sel.negated&&!sel.selection_type?.includes("— Non")) sel.selection_type=(sel.selection_type||"")+" — Non";
       if(!sel.sel_type) sel.sel_type=normalizeSelType(sel.selection_type);
+      // Auto-extract sel_dir + sel_threshold from selection_type if not set by IA
+      if(!sel.sel_dir&&(sel.sel_type==="nb buts"||sel.sel_type==="nb buts MT"||sel.sel_type==="handicap")){
+        const st=sel.selection_type||"";
+        const mPlus=st.match(/[\+\>]?\s*(plus de|over|au moins|[\+])\s*([\d\.]+)/i);
+        const mMinus=st.match(/[\-\<]?\s*(moins de|under|au plus|[\-])\s*([\d\.]+)/i);
+        const mRaw=st.match(/([\+\-])\s*([\d\.]+)/);
+        if(mPlus){sel.sel_dir="+";sel.sel_threshold=parseFloat(mPlus[2]);}
+        else if(mMinus){sel.sel_dir="-";sel.sel_threshold=parseFloat(mMinus[2]);}
+        else if(mRaw){sel.sel_dir=mRaw[1];sel.sel_threshold=parseFloat(mRaw[2]);}
+      }
       // MyMatch: clear odd
       if(raw.bet_structure==="mymatch") sel.odd=null;
       return sel;
@@ -904,7 +951,18 @@ function BetDetailModal({ bet, onClose, onDelete, onUpdate, allTags, objectives 
                     <div className="sel-top">
                       <div style={{flex:1}}>
                         <div className="sel-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
-                        <div className="sel-type">{s.selection_type}{(()=>{const t=normalizeSelType(s.sel_type||s.selection_type);return t&&t!=="autre"?<span style={{color:'var(--accent2)',fontSize:10,marginLeft:4}}>· {t}</span>:null;})()}</div>
+                        <div className="sel-type">
+                          {s.selection_type}
+                          {(()=>{
+                            const t=normalizeSelType(s.sel_type||s.selection_type);
+                            return t&&t!=="autre"?<span style={{color:'var(--accent2)',fontSize:10,marginLeft:4}}>· {t}</span>:null;
+                          })()}
+                          {s.sel_dir&&s.sel_threshold!=null&&(
+                            <span style={{color:s.sel_dir==="+"?"var(--win)":"var(--loss)",fontSize:10,fontWeight:800,marginLeft:4,fontFamily:'var(--font-head)'}}>
+                              {s.sel_dir}{s.sel_threshold}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
                         {s.sel_result&&<span style={{fontSize:11,fontWeight:800,color:s.sel_result==="win"?"var(--win)":"var(--loss)",fontFamily:'var(--font-head)'}}>{s.sel_result==="win"?"✓":"✗"}</span>}
@@ -1225,30 +1283,49 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
               const isNeg=s.negated||s.selection_type?.includes("— Non");
               const showOdd=s.odd&&s.odd>1;
               return(
-                <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
-                  <div className="selection-left">
-                    <div className="selection-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
-                    <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2,flexWrap:'wrap'}}>
-                      <div className="selection-type">{s.selection_type}</div>
-                      {/* MyMatch: inline sel_type selector */}
-                      <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
-                          value={normalizeSelType(s.sel_type||s.selection_type)||"autre"}
-                          onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_type:e.target.value};upd("selections",sels);}}>
-                          {ALL_SEL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-                        </select>
-                      {extracted.bet_structure==="combiné"&&(
-                        <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:s.sel_result==="win"?"var(--win)":s.sel_result==="loss"?"var(--loss)":"var(--text3)",fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
-                          value={s.sel_result||""}
-                          onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_result:e.target.value||null};upd("selections",sels);}}>
-                          <option value="">Résultat ?</option>
-                          <option value="win">✓ Gagnée</option>
-                          <option value="loss">✗ Perdue</option>
-                        </select>
-                      )}
+                {(()=>{
+                  const selType=normalizeSelType(s.sel_type||s.selection_type)||"autre";
+                  const showThreshold=selType==="nb buts"||selType==="nb buts MT"||selType==="handicap";
+                  return(
+                    <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
+                      <div className="selection-left">
+                        <div className="selection-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
+                        <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2,flexWrap:'wrap'}}>
+                          <div className="selection-type">{s.selection_type}</div>
+                          <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
+                              value={selType}
+                              onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_type:e.target.value};upd("selections",sels);}}>
+                              {ALL_SEL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                            </select>
+                          {showThreshold&&(
+                            <div style={{display:'flex',alignItems:'center',gap:3}}>
+                              <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'2px 5px',color:s.sel_dir==="-"?"var(--loss)":"var(--win)",fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer',width:36}}
+                                value={s.sel_dir||"+"}
+                                onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_dir:e.target.value};upd("selections",sels);}}>
+                                <option value="+">+</option>
+                                <option value="-">−</option>
+                              </select>
+                              <input type="number" step="0.5" style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'2px 5px',color:'var(--text)',fontFamily:'var(--font-head)',fontWeight:700,width:48,outline:'none'}}
+                                value={s.sel_threshold||""}
+                                placeholder="2.5"
+                                onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_threshold:parseFloat(e.target.value)||null};upd("selections",sels);}}/>
+                            </div>
+                          )}
+                          {extracted.bet_structure==="combiné"&&(
+                            <select style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:10,padding:'1px 5px',color:s.sel_result==="win"?"var(--win)":s.sel_result==="loss"?"var(--loss)":"var(--text3)",fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
+                              value={s.sel_result||""}
+                              onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],sel_result:e.target.value||null};upd("selections",sels);}}>
+                              <option value="">Résultat ?</option>
+                              <option value="win">✓ Gagnée</option>
+                              <option value="loss">✗ Perdue</option>
+                            </select>
+                          )}
+                        </div>
+                      </div>
+                      {showOdd&&<div className="selection-odd">×{fmt(s.odd)}</div>}
                     </div>
-                  </div>
-                  {showOdd&&<div className="selection-odd">×{fmt(s.odd)}</div>}
-                </div>
+                  );
+                })()}
               );
             })}
           </div>
@@ -1665,14 +1742,15 @@ function DashboardTab({ bets }) {
   const comboSels=getAllSelections(bets.filter(b=>b.bet_structure==="combiné"));
   const comboSelResults=comboSels.filter(s=>s.sel_result!=null);
   const comboSelRateByType=comboSelResults.length>0?getSelGroupStatsIndividual(comboSelResults,s=>s._selType):[];
+  const mymatchCombos=getMymatchCombos(bets);
   // Competition: normalize and group properly
   const normalizedSels=allSels.map(sel=>({...sel,_competition:normalizeCompetition(sel._competition||"")||normalizeCompetition(sel._bet?.competition||"")||""}));
   const compRows=getSelGroupStats(normalizedSels.filter(s=>s._competition),s=>s._competition).slice(0,12);
   const oddRanges=getOddRangeStats(bets);
   const streaks=getStreaks(bets);
   const players=getPlayerStats(bets);
-  const topP=[...players].sort((a,b)=>b.profit-a.profit).slice(0,5);
-  const worstP=[...players].sort((a,b)=>a.profit-b.profit).slice(0,5);
+  const topP=[...players].filter(p=>p.count>=2).sort((a,b)=>(b.count>0?b.wins/b.count:0)-(a.count>0?a.wins/a.count:0)||b.count-a.count).slice(0,5);
+  const worstP=[...players].filter(p=>p.count>=2).sort((a,b)=>(a.count>0?a.wins/a.count:0)-(b.count>0?b.wins/b.count:0)||b.count-a.count).slice(0,5);
   const shown=pView==="top"?topP:worstP;
 
   return(
@@ -1718,6 +1796,26 @@ function DashboardTab({ bets }) {
                 <SelTable rows={comboSelRateByType} label="Type"/>
               </div>
             )}
+          </StatSection>
+        )}
+
+        {mymatchCombos.length>0&&(
+          <StatSection title="🔗 Combos Paris Simple (MyMatch)" defaultOpen={false}>
+            <div style={{fontSize:11,color:'var(--text2)',marginBottom:8,lineHeight:1.5}}>Combinaisons de critères sur un même match. Quels combos tu gagnes le plus ?</div>
+            <div className="card" style={{padding:0,overflow:'hidden'}}>
+              <table className="data-table">
+                <thead><tr><th>Combinaison</th><th style={{textAlign:'center'}}>Paris</th><th style={{textAlign:'center'}}>Réussite</th></tr></thead>
+                <tbody>
+                  {mymatchCombos.map((r,i)=>(
+                    <tr key={i}>
+                      <td style={{fontSize:11,color:'var(--text)'}}>{r.label}</td>
+                      <td style={{textAlign:'center',color:'var(--text2)'}}>{r.total}</td>
+                      <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)'}}>{fmt(r.rate,0)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </StatSection>
         )}
 
@@ -1786,13 +1884,15 @@ function DashboardTab({ bets }) {
                 ?<div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'12px 0'}}>Pas assez de données</div>
                 :shown.map((p,i)=>(
                   <div key={p.player} className="player-row">
-                    <div className="player-rank" style={{color:i===0?(pView==='top'?'var(--accent)':'var(--loss)'):'var(--text3)'}}>{pView==='worst'?'💀':'🏆'}</div>
+                    <div className="player-rank" style={{color:i===0?(pView==='top'?'var(--accent)':'var(--loss)'):'var(--text3)'}}>{i+1}</div>
                     <div className="player-avatar">⚽</div>
                     <div className="player-info">
                       <div className="player-name">{p.display}</div>
-                      <div className="player-meta">{p.count} paris · {p.count>0?fmt(p.wins/p.count*100,0):0}% réussite</div>
+                      <div className="player-meta">{p.count} paris</div>
                     </div>
-                    <div className="player-profit" style={{color:p.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(p.profit)}</div>
+                    <div style={{fontFamily:'var(--font-head)',fontSize:16,fontWeight:800,color:p.count>0&&(p.wins/p.count)>=0.5?'var(--win)':'var(--text2)',flexShrink:0}}>
+                      {p.count>0?`${fmt(p.wins/p.count*100,0)}%`:"—"}
+                    </div>
                   </div>
                 ))
               }
@@ -1815,7 +1915,7 @@ function TeamPlayerSearch({ bets }) {
 
   const doSearch = () => setSubmitted(query.trim());
 
-  const { bets: matchedBets, selStats } = submitted ? getEntityStats(bets, submitted) : {bets:[], selStats:[]};
+  const { bets: matchedBets, selStats, mode } = submitted ? getEntityStats(bets, submitted) : {bets:[], selStats:[], mode:"none"};
   const s = submitted ? computeStats(matchedBets) : null;
 
   return(
@@ -1828,6 +1928,11 @@ function TeamPlayerSearch({ bets }) {
       </div>
       {submitted&&matchedBets.length===0&&(
         <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'14px 0'}}>Aucun pari trouvé pour "{submitted}"</div>
+      )}
+      {submitted&&matchedBets.length>0&&(
+        <div style={{fontSize:10,color:mode==="player"?"var(--scorer)":"var(--accent2)",fontWeight:700,marginBottom:8,textTransform:'uppercase',letterSpacing:'0.5px'}}>
+          {mode==="player"?"👤 Vue joueur":"🏟️ Vue équipe"}
+        </div>
       )}
       {submitted&&matchedBets.length>0&&s&&(
         <div>
