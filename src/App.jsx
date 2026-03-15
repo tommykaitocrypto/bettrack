@@ -2138,6 +2138,12 @@ function TeamPlayerSearch({ bets }) {
   const doSearch = () => setSubmitted(query.trim());
 
   const { bets: matchedBets, selStats, mode } = submitted ? getEntityStats(bets, submitted) : {bets:[], selStats:[], mode:"none"};
+  // Réussite = au niveau sélection (pas du pari global) — une sél. "Résultat Real Madrid" peut être
+  // gagnante même si le combiné global est perdu
+  const selTotal = selStats.reduce((a,r)=>a+r.total,0);
+  const selWins  = selStats.reduce((a,r)=>a+r.wins,0);
+  const selRate  = selTotal>0?(selWins/selTotal)*100:0;
+  // Profit + ROI : basés sur les paris concernés (niveau pari, pas sélection)
   const s = submitted ? computeStats(matchedBets) : null;
 
   return(
@@ -2160,7 +2166,11 @@ function TeamPlayerSearch({ bets }) {
         <div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:10}}>
             <div className="stat-card"><div className="stat-label">Paris joués</div><div className="stat-value neutral">{s.total}</div></div>
-            <div className="stat-card"><div className="stat-label">Réussite</div><div className={`stat-value ${s.rate>=50?'positive':'negative'}`}>{fmt(s.rate,0)}%</div></div>
+            <div className="stat-card">
+              <div className="stat-label">Réussite sél.</div>
+              <div className={`stat-value ${selRate>=50?'positive':'negative'}`}>{fmt(selRate,0)}%</div>
+              <div className="stat-sub" style={{fontSize:9}}>{selWins}/{selTotal} sél. gagnées</div>
+            </div>
             <div className="stat-card"><div className="stat-label">Profit</div><div className={`stat-value ${s.profit>=0?'positive':'negative'}`}>{fmtEuro(s.profit)}</div></div>
             <div className="stat-card"><div className="stat-label">ROI</div><div className={`stat-value ${s.roi!=null?(s.roi>=0?'positive':'negative'):'neutral'}`}>{s.roi!=null?`${s.roi>=0?'+':''}${fmt(s.roi,1)}%`:"—"}</div></div>
           </div>
