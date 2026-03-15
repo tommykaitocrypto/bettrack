@@ -314,6 +314,79 @@ function normalizeCompetition(raw) {
   return COMP_ALIASES[trimmed] || trimmed;
 }
 
+// ─── TEAM NORMALISATION ───────────────────────────────────────────────────────
+const TEAM_ALIASES = {
+  // PSG
+  "Paris Saint-Germain":"PSG","Paris SG":"PSG","Paris Saint Germain":"PSG",
+  "Paris":"PSG","Paris FC":"Paris FC",
+  // OM
+  "Olympique de Marseille":"Marseille","Olympique Marseille":"Marseille","OM":"Marseille",
+  // OL
+  "Olympique Lyonnais":"Lyon","Olympique de Lyon":"Lyon","OL":"Lyon",
+  // Barça
+  "FC Barcelone":"Barcelone","FC Barcelona":"Barcelone","Barcelona":"Barcelone","Barça":"Barcelone","Barca":"Barcelone",
+  // Real
+  "Real Madrid CF":"Real Madrid","Real Madrid C.F.":"Real Madrid",
+  // Man City
+  "Manchester City":"Man City","Manchester City FC":"Man City",
+  // Man Utd
+  "Manchester United":"Man Utd","Manchester United FC":"Man Utd","Man United":"Man Utd",
+  // Liverpool
+  "Liverpool FC":"Liverpool",
+  // Arsenal
+  "Arsenal FC":"Arsenal",
+  // Chelsea
+  "Chelsea FC":"Chelsea",
+  // Tottenham
+  "Tottenham Hotspur":"Tottenham","Tottenham Hotspur FC":"Tottenham","Spurs":"Tottenham",
+  // Bayern
+  "FC Bayern München":"Bayern Munich","FC Bayern Munich":"Bayern Munich","Bayern München":"Bayern Munich","Bayern":"Bayern Munich",
+  // BVB
+  "Borussia Dortmund":"Dortmund","BVB":"Dortmund",
+  // Juventus
+  "Juventus FC":"Juventus","Juventus Turin":"Juventus",
+  // Inter
+  "Inter Milan":"Inter","FC Internazionale":"Inter","Internazionale":"Inter",
+  // AC Milan
+  "AC Milan":"Milan","AC Milan FC":"Milan",
+  // Atlético
+  "Atlético de Madrid":"Atletico","Atletico Madrid":"Atletico","Atlético Madrid":"Atletico",
+  // Ajax
+  "AFC Ajax":"Ajax",
+  // Porto
+  "FC Porto":"Porto",
+  // Benfica
+  "SL Benfica":"Benfica",
+  // Celtic
+  "Celtic FC":"Celtic",
+  // Rangers
+  "Rangers FC":"Rangers",
+  // Nice
+  "OGC Nice":"Nice",
+  // Monaco
+  "AS Monaco":"Monaco",
+  // Lens
+  "RC Lens":"Lens",
+  // Rennes
+  "Stade Rennais":"Rennes","Stade Rennais FC":"Rennes",
+  // Lille
+  "LOSC Lille":"Lille","LOSC":"Lille",
+  // Brest
+  "Stade Brestois":"Brest","Stade Brestois 29":"Brest",
+  // Sevilla
+  "Sevilla FC":"Sevilla","Séville":"Sevilla",
+  // Valencia
+  "Valencia CF":"Valencia",
+  // Villarreal
+  "Villarreal CF":"Villarreal",
+};
+
+function normalizeTeam(raw) {
+  if (!raw) return raw;
+  const t = raw.trim();
+  return TEAM_ALIASES[t] || t;
+}
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const fmt = (n,d=2) => (n||0).toFixed(d);
 const fmtEuro = n => `${n>=0?'+':''}${fmt(n)}€`;
@@ -357,7 +430,7 @@ function normalizePlayerName(raw) {
   return `${first[0].toUpperCase()}.${rest}`;
 }
 
-function hasScorer(bet) { return bet.selections?.some(s=>s.selection_type==="buteur"||s.selection_type==="joueur décisif"); }
+function hasScorer(bet) { return bet.selections?.some(s=>s.sel_type==="Buteur/Passeur"||s.sel_type==="Doublé / Triplé"||s.selection_type==="buteur"||s.selection_type==="joueur décisif"); }
 
 function getPlayerStats(bets) {
   const map = {};
@@ -402,40 +475,40 @@ function getStreaks(bets){
 }
 
 function normalizeSelType(raw){
-  if(!raw) return "autre";
+  if(!raw) return "Autre";
   const r=raw.toLowerCase();
   // Doublé/triplé/quadruplé — y compris "marque 2 buts", "marque 3 buts", "2+ buts", "2 buts ou plus"
-  if(r.includes("doublé")||r.includes("triplé")||r.includes("quadruplé")) return "doublé/triplé";
-  if(/marque\s*[23]\s*buts?/.test(r)||/[23]\+?\s*buts?\s*(ou\s*plus)?/.test(r)||/marque\s*au\s*moins\s*[23]/.test(r)) return "doublé/triplé";
+  if(r.includes("doublé")||r.includes("triplé")||r.includes("quadruplé")) return "Doublé / Triplé";
+  if(/marque\s*[23]\s*buts?/.test(r)||/[23]\+?\s*buts?\s*(ou\s*plus)?/.test(r)||/marque\s*au\s*moins\s*[23]/.test(r)) return "Doublé / Triplé";
   // Joueur décisif / passeur / buteur (1 but, marque exactement 1)
-  if(r.includes("passeur")||r.includes("passe décisive")) return "joueur décisif";
-  if(r.includes("joueur décisif")) return "joueur décisif";
-  if(/marque\s*(exactement\s*)?1\s*but/.test(r)||r.includes("buteur")||r.includes("marquer au moins 1")||r.includes("à marquer")) return "joueur décisif";
-  if(r.includes("scorer")) return "joueur décisif";
+  if(r.includes("passeur")||r.includes("passe décisive")) return "Buteur/Passeur";
+  if(r.includes("joueur décisif")) return "Buteur/Passeur";
+  if(/marque\s*(exactement\s*)?1\s*but/.test(r)||r.includes("buteur")||r.includes("marquer au moins 1")||r.includes("à marquer")) return "Buteur/Passeur";
+  if(r.includes("scorer")) return "Buteur/Passeur";
   // Score exact MT
-  if(r.includes("score exact")&&(r.includes("mi-temps")||r.includes("mt")||r.includes("1ère")||r.includes("2ème")||r.includes("première")||r.includes("deuxième"))) return "score exact MT";
-  if(r.includes("score exact")||r.includes("score précis")||r.includes("correct score")) return "score exact";
-  if(r.includes("qualification")||r.includes("se qualifie")) return "qualification";
+  if(r.includes("score exact")&&(r.includes("mi-temps")||r.includes("mt")||r.includes("1ère")||r.includes("2ème")||r.includes("première")||r.includes("deuxième"))) return "Score Exact MT";
+  if(r.includes("score exact")||r.includes("score précis")||r.includes("correct score")) return "Score Exact";
+  if(r.includes("qualification")||r.includes("se qualifie")) return "Qualification";
   // Handicap — "écart de buts (handicap)", "victoire -1.5", "handicap -X"
-  if(r.includes("handicap")||r.includes("spread")||/\-[\d\.]+\s*(but|goal)/.test(r)) return "handicap";
+  if(r.includes("handicap")||r.includes("spread")||/\-[\d\.]+\s*(but|goal)/.test(r)) return "Handicap";
   // Écart buts (sans handicap)
-  if(r.includes("écart")||r.includes("marge")) return "écart buts";
-  if(r.includes("première équipe à marquer")||r.includes("1ère équipe à marquer")||r.includes("first team to score")) return "1ère équipe à marquer";
+  if(r.includes("écart")||r.includes("marge")) return "Écart de buts";
+  if(r.includes("première équipe à marquer")||r.includes("1ère équipe à marquer")||r.includes("first team to score")) return "1ère Équipe à Marquer";
   // Nb buts MT
-  if((r.includes("buts")||r.includes("but")||r.includes("goal"))&&(r.includes("mi-temps")||r.includes(" mt ")||r.includes("1ère")||r.includes("première mi")||r.includes("2ème")||r.includes("deuxième mi"))) return "nb buts MT";
-  if(r.includes("btts")||r.includes("les deux équipes marquent")||r.includes("both teams to score")||r.includes("les 2 équipes")) return "les 2 marquent";
-  if(r.includes("clean sheet")||r.includes("sans encaisser")||r.includes("0 but encaissé")) return "clean sheet";
+  if((r.includes("buts")||r.includes("but")||r.includes("goal"))&&(r.includes("mi-temps")||r.includes(" mt ")||r.includes("1ère")||r.includes("première mi")||r.includes("2ème")||r.includes("deuxième mi"))) return "Over/Under MT";
+  if(r.includes("btts")||r.includes("les deux équipes marquent")||r.includes("both teams to score")||r.includes("les 2 équipes")) return "BTTS";
+  if(r.includes("clean sheet")||r.includes("sans encaisser")||r.includes("0 but encaissé")) return "Clean Sheet";
   // Nb buts (over/under)
-  if(r.includes("over")||r.includes("under")||/[\+\-][\d\.]+\s*buts?/.test(r)||r.includes("plus de")||r.includes("moins de")||r.includes("au moins")||r.includes("au plus")) return "nb buts";
-  if(r.includes("nb buts")||r.includes("nombre de but")||r.includes("total buts")||r.includes("total goals")) return "nb buts";
+  if(r.includes("over")||r.includes("under")||/[\+\-][\d\.]+\s*buts?/.test(r)||r.includes("plus de")||r.includes("moins de")||r.includes("au moins")||r.includes("au plus")) return "Over/Under";
+  if(r.includes("nb buts")||r.includes("nombre de but")||r.includes("total buts")||r.includes("total goals")) return "Over/Under";
   // Résultat d'équipe
-  if(r.includes("victoire")||r.includes("gagne")||r.includes("nul")||r.includes("défaite")||r.includes("match nul")||r.includes("1x2")||r.includes("vainqueur")||r.includes("double chance")) return "résultat";
-  if(r.includes("résultat")||r.includes("gagnant")) return "résultat";
-  return "autre";
+  if(r.includes("victoire")||r.includes("gagne")||r.includes("nul")||r.includes("défaite")||r.includes("match nul")||r.includes("1x2")||r.includes("vainqueur")||r.includes("double chance")) return "Résultat (1N2)";
+  if(r.includes("résultat")||r.includes("gagnant")) return "Résultat (1N2)";
+  return "Autre";
 }
 
 // Full sel type list for UI
-const ALL_SEL_TYPES = ["résultat","nb buts","nb buts MT","score exact","score exact MT","joueur décisif","doublé/triplé","handicap","qualification","écart buts","1ère équipe à marquer","les 2 marquent","clean sheet","autre"];
+const ALL_SEL_TYPES = ["Résultat (1N2)","Over/Under","Over/Under MT","Score Exact","Score Exact MT","Buteur/Passeur","Doublé / Triplé","Handicap","Qualification","Écart de buts","1ère Équipe à Marquer","BTTS","Clean Sheet","Autre"];
 
 // displayStructure: mymatch → simple
 function displayStructure(bet){
@@ -473,7 +546,12 @@ function getEntityStats(bets, query){
   if(!q) return {bets:[], selStats:[], mode:"none"};
 
   // Detect mode: is query a team (matches team_1/team_2) or a player (matches selections[].player)?
-  const matchesTeam = bets.some(b=>(b.team_1||"").toLowerCase().includes(q)||(b.team_2||"").toLowerCase().includes(q));
+  // Also check normalized name so "PSG" matches "Paris SG" stored as "PSG" after normalization
+  const matchesTeam = bets.some(b=>{
+    const t1=normalizeTeam(b.team_1||"").toLowerCase();
+    const t2=normalizeTeam(b.team_2||"").toLowerCase();
+    return t1.includes(q)||t2.includes(q);
+  });
   const matchesPlayer = bets.some(b=>(b.selections||[]).some(s=>(s.player||"").toLowerCase().includes(q)||(s.player_display||"").toLowerCase().includes(q)));
 
   // Prefer player mode if query is player-like (no team match OR explicit player match)
@@ -494,14 +572,22 @@ function getEntityStats(bets, query){
     );
   } else {
     // Team mode: only bets where team_1 or team_2 matches — NOT via player selections
-    matchedBets = bets.filter(b=>
-      (b.team_1||"").toLowerCase().includes(q)||(b.team_2||"").toLowerCase().includes(q)
-    );
+    matchedBets = bets.filter(b=>{
+      const t1=normalizeTeam(b.team_1||"").toLowerCase();
+      const t2=normalizeTeam(b.team_2||"").toLowerCase();
+      return t1.includes(q)||t2.includes(q);
+    });
     const allSelsMatched = getAllSelections(matchedBets);
-    // Filter selections for this team specifically (sel.team matches), not player sels
-    entitySels = allSelsMatched.filter(s=>(s.team||"").toLowerCase().includes(q));
-    // If no team-tagged selections, fall back to all sels of these bets (for stats)
-    if(entitySels.length===0) entitySels = allSelsMatched;
+    // Keep only selections where team matches AND no player (pure team selections)
+    // Exclude joueur/player selections — those belong to player search only
+    entitySels = allSelsMatched.filter(s=>
+      !s.player && // no player tag
+      (s.team||"").toLowerCase().includes(q)
+    );
+    // If no team-tagged selections (old data), include all non-player sels
+    if(entitySels.length===0){
+      entitySels = allSelsMatched.filter(s=>!s.player);
+    }
   }
 
   const selStats = getSelGroupStatsIndividual(entitySels, s=>s._selType||"autre");
@@ -513,7 +599,10 @@ function getMymatchCombos(bets){
   const simpleBets = bets.filter(b=>(b.bet_structure==="simple"||b.bet_structure==="mymatch")&&(b.selections||[]).length>=2);
   const comboCounts={};
   simpleBets.forEach(bet=>{
-    const types=[...new Set((bet.selections||[]).map(s=>normalizeSelType(s.sel_type||s.selection_type)))].sort();
+    const TYPE_ORDER=["Résultat (1N2)","Over/Under","Over/Under MT","BTTS","Handicap","Écart de buts","1ère Équipe à Marquer","Clean Sheet","Score Exact","Score Exact MT","Qualification","Buteur/Passeur","Doublé / Triplé","Autre"];
+    const rawTypes=[...new Set((bet.selections||[]).map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
+    // Sort by TYPE_ORDER for consistent readable label
+    const types=rawTypes.sort((a,b)=>{const ia=TYPE_ORDER.indexOf(a),ib=TYPE_ORDER.indexOf(b);return(ia===-1?99:ia)-(ib===-1?99:ib);});
     if(types.length<2) return;
     const key=types.join(" + ");
     if(!comboCounts[key]) comboCounts[key]={label:key,total:0,wins:0};
@@ -543,6 +632,23 @@ function getOddRangeStats(bets){
   const valid = bets.filter(b=>b.total_odd&&b.total_odd>1&&b.total_odd<100);
   const ranges=[{label:"1.0 – 1.5",min:1,max:1.5},{label:"1.5 – 2.0",min:1.5,max:2},{label:"2.0 – 3.0",min:2,max:3},{label:"3.0+",min:3,max:9999}];
   return ranges.map(r=>{const sub=valid.filter(b=>b.total_odd>r.min&&b.total_odd<=r.max);const st=computeStats(sub);return{...r,count:sub.length,profit:st.profit,wins:st.wins,rate:st.rate,roi:st.roi};}).filter(r=>r.count>0);
+}
+
+// Group combiné selections by match (team pair)
+function groupSelsByMatch(bet) {
+  if(bet.bet_structure!=="combiné"||(bet.selections||[]).length===0) return null;
+  const groups = [];
+  const sels = bet.selections;
+  // Try to group by sel._match_team if IA tagged it, else use team field
+  sels.forEach(sel => {
+    const matchKey = sel.match_team_1&&sel.match_team_2
+      ? `${sel.match_team_1}|${sel.match_team_2}`
+      : sel.team||"__unknown__";
+    let group = groups.find(g => g.key === matchKey || g.sels.some(s => s.team === sel.team));
+    if (!group) { group = { key: matchKey, team_1: sel.match_team_1||sel.team||"", team_2: sel.match_team_2||"", sels: [] }; groups.push(group); }
+    group.sels.push(sel);
+  });
+  return groups.length > 1 ? groups : null;
 }
 
 // Compute combination's competition: only show if all selections share same competition
@@ -604,6 +710,10 @@ BUTEURS MULTI-CHANCES : "Buteur Ruiz OU Hakimi OU Kvaratskhelia" → UNE SEULE s
 ━━━ RÈGLE 8 — ÉQUIPE PAR SÉLECTION ━━━
 Pour chaque sélection, "team" = l'équipe concernée par ce critère.
 Ex: "Victoire PSG"→team:"PSG" ; "Mbappé buteur"→team:"",player:"K.Mbappé"
+Pour les COMBINÉS : ajoute aussi "match_team_1" et "match_team_2" = les deux équipes DU MATCH de cette sélection.
+Ex: sélection "Victoire PSG" dans PSG-Aston Villa → match_team_1:"PSG", match_team_2:"Aston Villa"
+Ex: sélection "Raphinha buteur" dans Barcelone-Dortmund → match_team_1:"Barcelone", match_team_2:"Dortmund"
+Cela permet d'identifier quel match correspond à quelle sélection dans un combiné.
 
 ━━━ RÈGLE 9 — TYPE DE SÉLECTION ━━━
 sel_type parmi: "résultat"|"nb buts"|"nb buts MT"|"score exact"|"score exact MT"|"joueur décisif"|"doublé/triplé"|"handicap"|"qualification"|"écart buts"|"1ère équipe à marquer"|"les 2 marquent"|"clean sheet"|"autre"
@@ -614,13 +724,16 @@ Pour sel_type "nb buts", "nb buts MT", "handicap" : ajoute sel_dir:"+" ou "-" et
 Ex: "Plus de 2.5 buts" → sel_dir:"+", sel_threshold:2.5 | "Moins de 1.5 buts" → sel_dir:"-", sel_threshold:1.5 | "PSG -1.5" → sel_dir:"-", sel_threshold:1.5
 
 ━━━ FORMAT JSON ━━━
-{"bet_ref":"","sport":"Football","bookmaker":"Winamax","competition":"","date":"YYYY-MM-DD","heure":"HH:MM","team_1":"","team_2":"","bet_structure":"simple|combiné","bet_category":"team|player|goals|combo","total_odd":1.5,"stake":10.0,"actual_win":0.0,"result":"win|loss","is_freebet":false,"selections":[{"team":"PSG","player":"","player_display":"","selection_type":"Victoire PSG","sel_type":"résultat","sel_dir":null,"sel_threshold":null,"sel_result":null,"odd":1.38,"negated":false}]}`,
+{"bet_ref":"","sport":"Football","bookmaker":"Winamax","competition":"","date":"YYYY-MM-DD","heure":"HH:MM","team_1":"","team_2":"","bet_structure":"simple|combiné","bet_category":"team|player|goals|combo","total_odd":1.5,"stake":10.0,"actual_win":0.0,"result":"win|loss","is_freebet":false,"selections":[{"team":"PSG","player":"","player_display":"","selection_type":"Victoire PSG","sel_type":"Résultat (1N2)","sel_dir":null,"sel_threshold":null,"sel_result":null,"match_team_1":"PSG","match_team_2":"Aston Villa","odd":1.38,"negated":false}]}`,
     messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mimeType,data:base64}},{type:"text",text:"Extrais le pari le plus complet visible sur cette image."}]}]
   })});
   const data=await r.json();
   const text=(data.content?.find(b=>b.type==="text")?.text||"");
   const raw=extractJSON(text);
   if(raw.competition) raw.competition=normalizeCompetition(raw.competition);
+  if(raw.team_1) raw.team_1=normalizeTeam(raw.team_1);
+  if(raw.team_2) raw.team_2=normalizeTeam(raw.team_2);
+  if(raw.selections) raw.selections=raw.selections.map(s=>({...s,team:s.team?normalizeTeam(s.team):s.team}));
   // MyMatch: null out total_odd if it looks like a selection number
   if(raw.bet_structure==="mymatch"&&raw.total_odd&&(raw.total_odd===Math.round(raw.total_odd))&&raw.total_odd<20) raw.total_odd=null;
   if(raw.selections){
@@ -943,35 +1056,72 @@ function BetDetailModal({ bet, onClose, onDelete, onUpdate, allTags, objectives 
           {bet.selections?.length>0&&(
             <div className="detail-section">
               <div className="detail-section-title">Sélections</div>
-              {bet.selections.map((s,i)=>{
-                const isNeg=s.negated||s.selection_type?.includes("— Non");
-                const showOdd=s.odd&&s.odd>1;
-                return(
-                  <div key={i} className="selection-detail" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:s.sel_result==="win"?{borderColor:'rgba(87,255,158,0.25)'}:s.sel_result==="loss"?{borderColor:'rgba(255,87,112,0.25)'}:{}}>
-                    <div className="sel-top">
-                      <div style={{flex:1}}>
-                        <div className="sel-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
-                        <div className="sel-type">
-                          {s.selection_type}
-                          {(()=>{
-                            const t=normalizeSelType(s.sel_type||s.selection_type);
-                            return t&&t!=="autre"?<span style={{color:'var(--accent2)',fontSize:10,marginLeft:4}}>· {t}</span>:null;
-                          })()}
-                          {s.sel_dir&&s.sel_threshold!=null&&(
-                            <span style={{color:s.sel_dir==="+"?"var(--win)":"var(--loss)",fontSize:10,fontWeight:800,marginLeft:4,fontFamily:'var(--font-head)'}}>
-                              {s.sel_dir}{s.sel_threshold}
-                            </span>
-                          )}
+              {(()=>{
+                const matchGroups = groupSelsByMatch(bet);
+                if(matchGroups){
+                  // Combiné: group by match
+                  return matchGroups.map((grp,gi)=>{
+                    const matchLabel = grp.team_2
+                      ? `${grp.team_1} vs ${grp.team_2}`
+                      : grp.team_1||`Match ${gi+1}`;
+                    return(
+                      <div key={gi} style={{marginBottom:10}}>
+                        <div style={{fontSize:10,color:'var(--accent2)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:5,display:'flex',alignItems:'center',gap:5}}>
+                          <span style={{background:'rgba(87,200,255,0.12)',border:'1px solid rgba(87,200,255,0.2)',borderRadius:5,padding:'1px 7px'}}>Match {gi+1}</span>
+                          <span style={{color:'var(--text2)',fontWeight:600,textTransform:'none',letterSpacing:0}}>{matchLabel}</span>
+                        </div>
+                        {grp.sels.map((s,i)=>{
+                          const isNeg=s.negated||s.selection_type?.includes("— Non");
+                          const showOdd=s.odd&&s.odd>1;
+                          const t=normalizeSelType(s.sel_type||s.selection_type);
+                          return(
+                            <div key={i} className="selection-detail" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:s.sel_result==="win"?{borderColor:'rgba(87,255,158,0.25)'}:s.sel_result==="loss"?{borderColor:'rgba(255,87,112,0.25)'}:{}}>
+                              <div className="sel-top">
+                                <div style={{flex:1}}>
+                                  <div className="sel-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
+                                  <div className="sel-type">
+                                    {s.selection_type}
+                                    {t&&t!=="autre"&&<span style={{color:'var(--accent2)',fontSize:10,marginLeft:4}}>· {t}</span>}
+                                    {s.sel_dir&&s.sel_threshold!=null&&<span style={{color:s.sel_dir==="+"?"var(--win)":"var(--loss)",fontSize:10,fontWeight:800,marginLeft:4,fontFamily:'var(--font-head)'}}>{s.sel_dir}{s.sel_threshold}</span>}
+                                  </div>
+                                </div>
+                                <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                                  {s.sel_result&&<span style={{fontSize:11,fontWeight:800,color:s.sel_result==="win"?"var(--win)":"var(--loss)",fontFamily:'var(--font-head)'}}>{s.sel_result==="win"?"✓":"✗"}</span>}
+                                  {showOdd&&<div className="sel-odd-big">×{fmt(s.odd)}</div>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  });
+                }
+                // Simple ou pas groupable: affichage normal
+                return bet.selections.map((s,i)=>{
+                  const isNeg=s.negated||s.selection_type?.includes("— Non");
+                  const showOdd=s.odd&&s.odd>1;
+                  const t=normalizeSelType(s.sel_type||s.selection_type);
+                  return(
+                    <div key={i} className="selection-detail" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:s.sel_result==="win"?{borderColor:'rgba(87,255,158,0.25)'}:s.sel_result==="loss"?{borderColor:'rgba(255,87,112,0.25)'}:{}}>
+                      <div className="sel-top">
+                        <div style={{flex:1}}>
+                          <div className="sel-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
+                          <div className="sel-type">
+                            {s.selection_type}
+                            {t&&t!=="autre"&&<span style={{color:'var(--accent2)',fontSize:10,marginLeft:4}}>· {t}</span>}
+                            {s.sel_dir&&s.sel_threshold!=null&&<span style={{color:s.sel_dir==="+"?"var(--win)":"var(--loss)",fontSize:10,fontWeight:800,marginLeft:4,fontFamily:'var(--font-head)'}}>{s.sel_dir}{s.sel_threshold}</span>}
+                          </div>
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                          {s.sel_result&&<span style={{fontSize:11,fontWeight:800,color:s.sel_result==="win"?"var(--win)":"var(--loss)",fontFamily:'var(--font-head)'}}>{s.sel_result==="win"?"✓":"✗"}</span>}
+                          {showOdd&&<div className="sel-odd-big">×{fmt(s.odd)}</div>}
                         </div>
                       </div>
-                      <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
-                        {s.sel_result&&<span style={{fontSize:11,fontWeight:800,color:s.sel_result==="win"?"var(--win)":"var(--loss)",fontFamily:'var(--font-head)'}}>{s.sel_result==="win"?"✓":"✗"}</span>}
-                        {showOdd&&<div className="sel-odd-big">×{fmt(s.odd)}</div>}
-                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           )}
 
@@ -1785,13 +1935,31 @@ function DashboardTab({ bets }) {
 
         {allSels.length>0&&(
           <StatSection title="🎯 Par type de sélection">
-            <SelTable rows={selTypeRows} label="Type"/>
-            {comboSelRateByType.length>0&&(
-              <div style={{marginTop:8}}>
-                <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600,marginBottom:6}}>Réussite individuelle dans les combinés</div>
-                <SelTable rows={comboSelRateByType} label="Type"/>
-              </div>
-            )}
+            <div className="card" style={{padding:0,overflow:'hidden'}}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th style={{textAlign:'center'}}>Sél.</th>
+                    <th style={{textAlign:'center'}}>Réussite</th>
+                    {comboSelRateByType.length>0&&<th style={{textAlign:'center',fontSize:9,color:'var(--accent2)'}}>Combinés</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {selTypeRows.map((r,i)=>{
+                    const comboRow=comboSelRateByType.find(c=>c.label===r.label);
+                    return(
+                      <tr key={i}>
+                        <td className="num">{r.label}</td>
+                        <td style={{textAlign:'center',color:'var(--text2)'}}>{r.total}</td>
+                        <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)'}}>{fmt(r.rate,0)}%</td>
+                        {comboSelRateByType.length>0&&<td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,fontSize:11,color:comboRow?(comboRow.rate>=50?'var(--win)':'var(--text2)'):'var(--text3)'}}>{comboRow&&comboRow.known>0?`${fmt(comboRow.rate,0)}%`:"—"}</td>}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </StatSection>
         )}
 
