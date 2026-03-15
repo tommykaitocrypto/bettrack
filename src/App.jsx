@@ -2254,20 +2254,7 @@ function TeamPlayerSearch({ bets, username }) {
                   {!creditUsed&&<button onClick={()=>{setAiText("");}} style={{background:'transparent',border:'none',color:'var(--text3)',fontSize:11,cursor:'pointer',fontFamily:'var(--font-head)'}}>↺ Relancer</button>}
                 </div>
                 <div className="ai-response-body" dangerouslySetInnerHTML={{__html:parseMarkdown(aiText)}}/>
-                {selStats.length>0&&(
-                  <div style={{marginTop:12,borderTop:'1px solid var(--border)',paddingTop:10}}>
-                    <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600,marginBottom:7}}>Sélections les plus jouées</div>
-                    <div style={{display:'flex',flexDirection:'column',gap:5}}>
-                      {selStats.slice(0,6).map((r,i)=>(
-                        <div key={i} style={{display:'flex',alignItems:'center',gap:8}}>
-                          <div style={{flex:1,fontSize:11,color:'var(--text)',fontWeight:600}}>{r.label}</div>
-                          <div style={{fontSize:11,color:'var(--text3)',minWidth:28,textAlign:'center'}}>{r.total}×</div>
-                          <div style={{fontSize:11,fontFamily:'var(--font-head)',fontWeight:700,minWidth:38,textAlign:'right',color:r.rate>=50?'var(--win)':'var(--text2)'}}>{r.known>0?`${Math.round(r.rate)}%`:"—"}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
               </>
             )}
           </div>
