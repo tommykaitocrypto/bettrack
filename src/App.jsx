@@ -621,7 +621,6 @@ function getMymatchCombos(bets){
     const key=sorted.join(" + ");
     if(!comboCounts[key]) comboCounts[key]={label:key,total:0,wins:0,profit:0,stake:0};
     comboCounts[key].total++;
-    // Profit/stake : pour un combiné, on attribue une part proportionnelle (1/nb_matchs)
     const p=betProfit(bet)*(shareOfBet||1);
     const st=betRealStake(bet)*(shareOfBet||1);
     comboCounts[key].stake+=st;
@@ -629,26 +628,53 @@ function getMymatchCombos(bets){
     else{comboCounts[key].profit-=st;}
   }
 
+  // Groupe les sélections d'un pari par match (match_team_1 en priorité, sinon team)
+  function groupByMatch(sels){
+    const groups={};
+    sels.forEach(s=>{
+      // Priorité : match_team_1 (nouveau) → team (ancien) → index de la sélection par ordre
+      const key = s.match_team_1 || s.team || null;
+      if(!key){
+        // Pas de team taggée → on tente de regrouper avec la sélection précédente
+        // par défaut on crée un groupe "__orphan__" (sera ignoré s'il n'a qu'1 sel)
+        const k="__orphan__";
+        if(!groups[k]) groups[k]=[];
+        groups[k].push(s);
+      } else {
+        if(!groups[key]) groups[key]=[];
+        groups[key].push(s);
+      }
+    });
+    return Object.values(groups).filter(g=>g.length>=2);
+  }
+
   bets.forEach(bet=>{
     const sels=bet.selections||[];
+    if(sels.length<2) return;
 
-    // CAS 1 — Paris simple avec 2+ sélections sur même match (MyMatch classique)
-    if((bet.bet_structure==="simple"||bet.bet_structure==="mymatch")&&sels.length>=2){
+    // CAS 1 — Paris simple avec 2+ sélections (MyMatch classique sur 1 match)
+    if(bet.bet_structure==="simple"||bet.bet_structure==="mymatch"){
       const rawTypes=[...new Set(sels.map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
       addCombo(rawTypes, bet.result==="win", bet, 1);
+      return;
     }
 
-    // CAS 2 — Combiné de MyMatch : sélections regroupées par match_team_1
-    if(bet.bet_structure==="combiné"&&sels.some(s=>s.match_team_1)){
-      const matchGroups={};
-      sels.forEach(s=>{
-        const key=s.match_team_1||(s.team||"__");
-        if(!matchGroups[key]) matchGroups[key]=[];
-        matchGroups[key].push(s);
-      });
-      const grpEntries=Object.values(matchGroups).filter(g=>g.length>=2);
-      const share=grpEntries.length>0?1/grpEntries.length:1;
-      grpEntries.forEach(grpSels=>{
+    // CAS 2 — Combiné : on cherche si certains matchs ont 2+ sélections (= MyMatch dans combiné)
+    if(bet.bet_structure==="combiné"){
+      const groups=groupByMatch(sels);
+      if(groups.length===0){
+        // Aucun match avec 2+ sels → le combiné entier a des sels uniques par match
+        // On affiche quand même le combo global si toutes les sels semblent du même match
+        // (cas d'un ancien import sans team taggée)
+        const distinctTeams=new Set(sels.map(s=>s.match_team_1||s.team||"").filter(Boolean));
+        if(distinctTeams.size<=1&&sels.length>=2){
+          const rawTypes=[...new Set(sels.map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
+          addCombo(rawTypes, bet.result==="win", bet, 1);
+        }
+        return;
+      }
+      const share=1/groups.length;
+      groups.forEach(grpSels=>{
         const rawTypes=[...new Set(grpSels.map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
         const grpWin=grpSels.every(s=>s.sel_result==="win")||(bet.result==="win"&&grpSels.every(s=>!s.sel_result));
         addCombo(rawTypes, grpWin, bet, share);
