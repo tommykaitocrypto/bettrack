@@ -931,6 +931,31 @@ async function runAIAnalysis(bets){
   );
 }
 
+async function runEntityAnalysis(query, mode, matchedBets){
+  const betsData = matchedBets.map(b=>({
+    date:b.date,
+    match:`${b.team_1||"?"} vs ${b.team_2||"?"}`,
+    struct:displayStructure(b),
+    odd:b.total_odd,
+    stake:betRealStake(b),
+    profit:betProfit(b),
+    result:b.result,
+    tag:b.tag,
+    selections:(b.selections||[]).map(s=>({
+      team:s.team,player:s.player_display||s.player,
+      type:s.selection_type,sel_type:s.sel_type,
+      sel_result:s.sel_result
+    }))
+  }));
+  const entityType = mode==="player" ? "joueur" : "équipe";
+  return callClaude(
+    `Tu es un analyste expert en paris sportifs. L'utilisateur te demande une analyse ciblée sur un ${entityType} spécifique à partir de ses paris. Réponds en français avec du markdown (gras avec **mot**, sections avec ##). Sois direct, factuel, utilise les données. Structure : ## Résumé, ## Ce qui ressort, ## Conseil. Max 150 mots. Pas de blabla.`,
+    `Analyse mes paris impliquant "${query}" (${entityType}) :
+${JSON.stringify(betsData,null,2)}`,
+    600
+  );
+}
+
 async function runQAQuery(bets,question){
   const betsData=bets.map(b=>({date:b.date,match:`${b.team_1} vs ${b.team_2}`,sport:b.sport,competition:b.competition,struct:b.bet_structure,odd:b.total_odd,stake:b.stake,win:b.actual_win,result:b.result,tag:b.tag,freebet:b.is_freebet,profit:betProfit(b),selections:(b.selections||[]).map(s=>({team:s.team,player:s.player_display||s.player,type:s.selection_type,sel_type:s.sel_type}))}));
   return callClaude(
@@ -1945,7 +1970,7 @@ function SelTable({ rows, label }) {
 }
 
 // ─── DASHBOARD TAB ────────────────────────────────────────────────────────────
-function DashboardTab({ bets }) {
+function DashboardTab({ bets, username }) {
   const [pView, setPView] = useState("top");
   if(bets.length===0)return<div className="empty-state"><div className="e-icon">📊</div><div className="e-title">Aucune donnée</div><div className="e-sub">Importez vos premiers paris.</div></div>;
 
@@ -2123,7 +2148,7 @@ function DashboardTab({ bets }) {
         )}
 
         <StatSection title="🔍 Recherche par équipe / joueur" defaultOpen={false}>
-          <TeamPlayerSearch bets={bets}/>
+          <TeamPlayerSearch bets={bets} username={username}/>
         </StatSection>
       </div>
     </div>
@@ -2131,20 +2156,51 @@ function DashboardTab({ bets }) {
 }
 
 // ─── TEAM/PLAYER SEARCH ───────────────────────────────────────────────────────
-function TeamPlayerSearch({ bets }) {
+function TeamPlayerSearch({ bets, username }) {
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [creditUsed, setCreditUsed] = useState(false);
 
-  const doSearch = () => setSubmitted(query.trim());
+  // Check QA credit on mount
+  useEffect(()=>{
+    if(!username) return;
+    const qaKey=`bettrack:qa_count_week:${username}`;
+    const now=new Date();
+    const weekStr=`${now.getFullYear()}-W${getWeekNum(now)}`;
+    const qaData=JSON.parse(localStorage.getItem(qaKey)||"{}");
+    if(qaData.week===weekStr&&(qaData.count||0)>=5) setCreditUsed(true);
+  },[username]);
+
+  const doSearch = async () => {
+    const q = query.trim();
+    if(!q) return;
+    setSubmitted(q);
+    setAiText("");
+  };
 
   const { bets: matchedBets, selStats, mode } = submitted ? getEntityStats(bets, submitted) : {bets:[], selStats:[], mode:"none"};
-  // Réussite = au niveau sélection (pas du pari global) — une sél. "Résultat Real Madrid" peut être
-  // gagnante même si le combiné global est perdu
-  const selTotal = selStats.reduce((a,r)=>a+r.total,0);
-  const selWins  = selStats.reduce((a,r)=>a+r.wins,0);
-  const selRate  = selTotal>0?(selWins/selTotal)*100:0;
-  // Profit + ROI : basés sur les paris concernés (niveau pari, pas sélection)
-  const s = submitted ? computeStats(matchedBets) : null;
+
+  const handleAI = async () => {
+    if(!matchedBets.length||aiLoading||creditUsed) return;
+    setAiLoading(true);
+    try {
+      const result = await runEntityAnalysis(submitted, mode, matchedBets);
+      setAiText(result);
+      // Consume 1 QA credit
+      if(username){
+        const qaKey=`bettrack:qa_count_week:${username}`;
+        const now=new Date();
+        const weekStr=`${now.getFullYear()}-W${getWeekNum(now)}`;
+        const qaData=JSON.parse(localStorage.getItem(qaKey)||"{}");
+        const newCount=(qaData.week===weekStr?(qaData.count||0):0)+1;
+        localStorage.setItem(qaKey,JSON.stringify({week:weekStr,count:newCount}));
+        if(newCount>=5) setCreditUsed(true);
+      }
+    } catch { setAiText("Erreur lors de l'analyse."); }
+    setAiLoading(false);
+  };
 
   return(
     <div>
@@ -2154,42 +2210,69 @@ function TeamPlayerSearch({ bets }) {
           onKeyDown={e=>e.key==="Enter"&&doSearch()}/>
         <button onClick={doSearch} style={{padding:'9px 14px',background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:'var(--radius-sm)',fontFamily:'var(--font-head)',fontSize:12,fontWeight:800,cursor:'pointer',flexShrink:0}}>Chercher</button>
       </div>
+
       {submitted&&matchedBets.length===0&&(
         <div style={{textAlign:'center',color:'var(--text3)',fontSize:12,padding:'14px 0'}}>Aucun pari trouvé pour "{submitted}"</div>
       )}
+
       {submitted&&matchedBets.length>0&&(
-        <div style={{fontSize:10,color:mode==="player"?"var(--scorer)":"var(--accent2)",fontWeight:700,marginBottom:8,textTransform:'uppercase',letterSpacing:'0.5px'}}>
-          {mode==="player"?"👤 Vue joueur":"🏟️ Vue équipe"}
-        </div>
-      )}
-      {submitted&&matchedBets.length>0&&s&&(
         <div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:10}}>
-            <div className="stat-card"><div className="stat-label">Paris joués</div><div className="stat-value neutral">{s.total}</div></div>
-            <div className="stat-card">
-              <div className="stat-label">Réussite sél.</div>
-              <div className={`stat-value ${selRate>=50?'positive':'negative'}`}>{fmt(selRate,0)}%</div>
-              <div className="stat-sub" style={{fontSize:9}}>{selWins}/{selTotal} sél. gagnées</div>
-            </div>
-            <div className="stat-card"><div className="stat-label">Profit</div><div className={`stat-value ${s.profit>=0?'positive':'negative'}`}>{fmtEuro(s.profit)}</div></div>
-            <div className="stat-card"><div className="stat-label">ROI</div><div className={`stat-value ${s.roi!=null?(s.roi>=0?'positive':'negative'):'neutral'}`}>{s.roi!=null?`${s.roi>=0?'+':''}${fmt(s.roi,1)}%`:"—"}</div></div>
+          {/* Mode badge */}
+          <div style={{fontSize:10,color:mode==="player"?"var(--scorer)":"var(--accent2)",fontWeight:700,marginBottom:10,textTransform:'uppercase',letterSpacing:'0.5px'}}>
+            {mode==="player"?"👤 Vue joueur":"🏟️ Vue équipe"} · {matchedBets.length} pari{matchedBets.length>1?"s":""}
           </div>
-          {selStats.length>0&&(
-            <div className="card" style={{padding:0,overflow:'hidden',marginBottom:10}}>
-              <table className="data-table">
-                <thead><tr><th>Type de sél.</th><th style={{textAlign:'center'}}>Nb</th><th style={{textAlign:'center'}}>Réussite</th></tr></thead>
-                <tbody>
-                  {selStats.map((r,i)=>(
-                    <tr key={i}>
-                      <td className="num">{r.label}</td>
-                      <td style={{textAlign:'center',color:'var(--text2)'}}>{r.total}</td>
-                      <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)'}}>{r.known>0?`${fmt(r.rate,0)}%`:"—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+
+          {/* IA Analysis block */}
+          <div style={{background:'linear-gradient(135deg,rgba(200,255,87,0.04),rgba(87,200,255,0.04))',border:'1px solid rgba(200,255,87,0.15)',borderRadius:'var(--radius)',padding:'12px',marginBottom:12}}>
+            {!aiText&&!aiLoading&&(
+              <>
+                <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text)',marginBottom:4}}>
+                  🤖 Analyse IA — {submitted}
+                </div>
+                <div style={{fontSize:11,color:'var(--text2)',marginBottom:10,lineHeight:1.5}}>
+                  L'IA analyse tes {matchedBets.length} paris impliquant {submitted} et sort les patterns clés, ce qui marche, et un conseil.
+                </div>
+                {creditUsed?(
+                  <div className="qa-limit-badge">Limite de 5 analyses atteinte cette semaine · reviens la semaine prochaine</div>
+                ):(
+                  <button onClick={handleAI} style={{width:'100%',padding:'10px',background:'linear-gradient(90deg,rgba(200,255,87,0.15),rgba(87,200,255,0.15))',border:'1px solid rgba(200,255,87,0.25)',borderRadius:'var(--radius)',fontFamily:'var(--font-head)',fontSize:12,fontWeight:800,color:'var(--text)',cursor:'pointer'}}>
+                    Analyser {submitted} → <span style={{fontSize:10,opacity:0.6,fontWeight:600}}>· 1 crédit</span>
+                  </button>
+                )}
+              </>
+            )}
+            {aiLoading&&(
+              <div style={{display:'flex',alignItems:'center',gap:10,padding:'4px 0'}}>
+                <div className="spinner" style={{width:16,height:16,borderWidth:2}}/>
+                <span style={{fontSize:12,color:'var(--accent)',fontFamily:'var(--font-head)',fontWeight:700}}>Analyse en cours…</span>
+              </div>
+            )}
+            {aiText&&!aiLoading&&(
+              <>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                  <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--accent)'}}>🤖 {submitted}</div>
+                  {!creditUsed&&<button onClick={()=>{setAiText("");}} style={{background:'transparent',border:'none',color:'var(--text3)',fontSize:11,cursor:'pointer',fontFamily:'var(--font-head)'}}>↺ Relancer</button>}
+                </div>
+                <div className="ai-response-body" dangerouslySetInnerHTML={{__html:parseMarkdown(aiText)}}/>
+                {selStats.length>0&&(
+                  <div style={{marginTop:12,borderTop:'1px solid var(--border)',paddingTop:10}}>
+                    <div style={{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600,marginBottom:7}}>Sélections les plus jouées</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                      {selStats.slice(0,6).map((r,i)=>(
+                        <div key={i} style={{display:'flex',alignItems:'center',gap:8}}>
+                          <div style={{flex:1,fontSize:11,color:'var(--text)',fontWeight:600}}>{r.label}</div>
+                          <div style={{fontSize:11,color:'var(--text3)',minWidth:28,textAlign:'center'}}>{r.total}×</div>
+                          <div style={{fontSize:11,fontFamily:'var(--font-head)',fontWeight:700,minWidth:38,textAlign:'right',color:r.rate>=50?'var(--win)':'var(--text2)'}}>{r.known>0?`${Math.round(r.rate)}%`:"—"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Paris list */}
           <div style={{fontSize:10,color:'var(--text3)',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:600}}>Paris concernés</div>
           {matchedBets.slice(0,10).map(bet=>{
             const profit=betProfit(bet);
@@ -2199,11 +2282,8 @@ function TeamPlayerSearch({ bets }) {
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text)'}}>
                     {(()=>{
-                      const isCombo = bet.bet_structure==="combiné";
-                      if(isCombo){
-                        // Count distinct matches
-                        const matchKeys=new Set((bet.selections||[]).map(s=>s.match_team_1||s.team||"_").filter(k=>k!=="__"&&k!==""));
-                        const n=matchKeys.size>1?matchKeys.size:((bet.selections||[]).length>1?">1":"1");
+                      if(bet.bet_structure==="combiné"){
+                        const matchKeys=new Set((bet.selections||[]).map(s=>s.match_team_1||s.team||"").filter(Boolean));
                         return `Combiné · ${matchKeys.size>1?matchKeys.size+" matchs":"multi-sélections"}`;
                       }
                       const t1=bet.team_1||(bet.selections||[]).find(s=>s.match_team_1)?.match_team_1||"?";
@@ -2851,7 +2931,7 @@ export default function App() {
       <div className="scroll-area">
         {tab==="upload"&&<UploadTab addBet={addBet} setBets={setBets} bets={bets} updateBet={updateBet} objectives={objectives}/>}
         {tab==="bets"&&<BetsTab bets={bets} onDelete={deleteBet} onUpdate={updateBet} objectives={objectives} onDeleteAll={deleteAllBets}/>}
-        {tab==="dashboard"&&<DashboardTab bets={bets}/>}
+        {tab==="dashboard"&&<DashboardTab bets={bets} username={user}/>}
         {tab==="insights"&&<InsightsTab bets={bets} username={user}/>}
         {tab==="objectifs"&&<ObjectifsTab bets={bets} objectives={objectives} onAddObjectif={addObjectif} onDeleteObjectif={deleteObjectif} onUpdateObjectif={updateObjectif}/>}
       </div>
