@@ -615,13 +615,18 @@ function getMymatchCombos(bets){
   const TYPE_ORDER=["Résultat (1N2)","Over/Under","Over/Under MT","BTTS","Handicap","Écart de buts","1ère Équipe à Marquer","Clean Sheet","Score Exact","Score Exact MT","Qualification","Buteur/Passeur","Doublé / Triplé","Autre"];
   const comboCounts={};
 
-  function addCombo(types, isWin){
-    const sorted=types.sort((a,b)=>{const ia=TYPE_ORDER.indexOf(a),ib=TYPE_ORDER.indexOf(b);return(ia===-1?99:ia)-(ib===-1?99:ib);});
+  function addCombo(types, isWin, bet, shareOfBet){
+    const sorted=[...types].sort((a,b)=>{const ia=TYPE_ORDER.indexOf(a),ib=TYPE_ORDER.indexOf(b);return(ia===-1?99:ia)-(ib===-1?99:ib);});
     if(sorted.length<2) return;
     const key=sorted.join(" + ");
-    if(!comboCounts[key]) comboCounts[key]={label:key,total:0,wins:0};
+    if(!comboCounts[key]) comboCounts[key]={label:key,total:0,wins:0,profit:0,stake:0};
     comboCounts[key].total++;
-    if(isWin) comboCounts[key].wins++;
+    // Profit/stake : pour un combiné, on attribue une part proportionnelle (1/nb_matchs)
+    const p=betProfit(bet)*(shareOfBet||1);
+    const st=betRealStake(bet)*(shareOfBet||1);
+    comboCounts[key].stake+=st;
+    if(isWin){comboCounts[key].wins++;comboCounts[key].profit+=p;}
+    else{comboCounts[key].profit-=st;}
   }
 
   bets.forEach(bet=>{
@@ -630,7 +635,7 @@ function getMymatchCombos(bets){
     // CAS 1 — Paris simple avec 2+ sélections sur même match (MyMatch classique)
     if((bet.bet_structure==="simple"||bet.bet_structure==="mymatch")&&sels.length>=2){
       const rawTypes=[...new Set(sels.map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
-      addCombo(rawTypes, bet.result==="win");
+      addCombo(rawTypes, bet.result==="win", bet, 1);
     }
 
     // CAS 2 — Combiné de MyMatch : sélections regroupées par match_team_1
@@ -641,19 +646,18 @@ function getMymatchCombos(bets){
         if(!matchGroups[key]) matchGroups[key]=[];
         matchGroups[key].push(s);
       });
-      // Chaque groupe de 2+ sélections = un MyMatch dans le combiné
-      Object.values(matchGroups).forEach(grpSels=>{
-        if(grpSels.length<2) return;
+      const grpEntries=Object.values(matchGroups).filter(g=>g.length>=2);
+      const share=grpEntries.length>0?1/grpEntries.length:1;
+      grpEntries.forEach(grpSels=>{
         const rawTypes=[...new Set(grpSels.map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
-        // Win = toutes les sélections du groupe gagnées (sel_result=win) ou pari global gagné
         const grpWin=grpSels.every(s=>s.sel_result==="win")||(bet.result==="win"&&grpSels.every(s=>!s.sel_result));
-        addCombo(rawTypes, grpWin);
+        addCombo(rawTypes, grpWin, bet, share);
       });
     }
   });
 
   return Object.values(comboCounts)
-    .map(c=>({...c,rate:c.total>0?c.wins/c.total*100:0}))
+    .map(c=>({...c,rate:c.total>0?c.wins/c.total*100:0,roi:c.stake>0?(c.profit/c.stake)*100:null}))
     .sort((a,b)=>b.total-a.total)
     .slice(0,12);
 }
@@ -1984,24 +1988,25 @@ function DashboardTab({ bets }) {
 
         {mymatchCombos.length>0&&(
           <StatSection title="🔗 Mes combos MyMatch">
-            <div style={{fontSize:11,color:'var(--text2)',marginBottom:10,lineHeight:1.5}}>
-              Quelles combinaisons de critères tu joues le plus sur un même match (MyMatch simple ou MyMatch dans un combiné) — et lesquelles tu gagnes.
-            </div>
             <div className="card" style={{padding:0,overflow:'hidden'}}>
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>Combo</th>
-                    <th style={{textAlign:'center'}}>Fois</th>
+                    <th style={{textAlign:'center'}}>N</th>
                     <th style={{textAlign:'center'}}>Réussite</th>
+                    <th style={{textAlign:'right'}}>Profit</th>
+                    <th style={{textAlign:'right'}}>ROI</th>
                   </tr>
                 </thead>
                 <tbody>
                   {mymatchCombos.map((r,i)=>(
                     <tr key={i}>
-                      <td style={{fontSize:11,color:'var(--text)',fontWeight:600,lineHeight:1.4}}>{r.label}</td>
+                      <td style={{fontSize:10,color:'var(--text)',fontWeight:600,lineHeight:1.4,maxWidth:110,wordBreak:'break-word'}}>{r.label}</td>
                       <td style={{textAlign:'center',color:'var(--text2)',fontFamily:'var(--font-head)',fontWeight:700}}>{r.total}</td>
-                      <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:800,fontSize:13,color:r.rate>=50?'var(--win)':'var(--loss)'}}>{fmt(r.rate,0)}%</td>
+                      <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:800,color:r.rate>=50?'var(--win)':'var(--loss)'}}>{fmt(r.rate,0)}%</td>
+                      <td style={{textAlign:'right',fontFamily:'var(--font-head)',fontWeight:700,fontSize:11,color:r.profit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(r.profit)}</td>
+                      <td style={{textAlign:'right',fontFamily:'var(--font-head)',fontWeight:700,fontSize:11,color:r.roi!=null?(r.roi>=0?'var(--win)':'var(--loss)'):'var(--text3)'}}>{r.roi!=null?`${r.roi>=0?'+':''}${fmt(r.roi,1)}%`:'—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2157,12 +2162,19 @@ function TeamPlayerSearch({ bets }) {
                 <div style={{width:22,height:22,borderRadius:'50%',background:bet.result==="win"?"rgba(87,255,158,0.15)":"rgba(255,87,112,0.12)",display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:bet.result==="win"?"var(--win)":"var(--loss)",flexShrink:0}}>{bet.result==="win"?"✓":"✕"}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text)'}}>
-                  {(()=>{
-                    const t1=bet.team_1||(bet.selections||[]).find(s=>s.match_team_1)?.match_team_1||"?";
-                    const t2=bet.team_2||(bet.selections||[]).find(s=>s.match_team_2)?.match_team_2||"?";
-                    return `${t1} vs ${t2}`;
-                  })()}
-                </div>
+                    {(()=>{
+                      const isCombo = bet.bet_structure==="combiné";
+                      if(isCombo){
+                        // Count distinct matches
+                        const matchKeys=new Set((bet.selections||[]).map(s=>s.match_team_1||s.team||"_").filter(k=>k!=="__"&&k!==""));
+                        const n=matchKeys.size>1?matchKeys.size:((bet.selections||[]).length>1?">1":"1");
+                        return `Combiné · ${matchKeys.size>1?matchKeys.size+" matchs":"multi-sélections"}`;
+                      }
+                      const t1=bet.team_1||(bet.selections||[]).find(s=>s.match_team_1)?.match_team_1||"?";
+                      const t2=bet.team_2||(bet.selections||[]).find(s=>s.match_team_2)?.match_team_2||"?";
+                      return `${t1} vs ${t2}`;
+                    })()}
+                  </div>
                   <div style={{fontSize:10,color:'var(--text3)'}}>{bet.date} · {displayStructure(bet)==="simple"?"Simple":"Combiné"} · ×{fmt(bet.total_odd)}</div>
                 </div>
                 <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:profit>=0?'var(--win)':'var(--loss)',flexShrink:0}}>{fmtEuro(profit)}</div>
