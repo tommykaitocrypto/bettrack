@@ -550,7 +550,13 @@ function getEntityStats(bets, query){
   const matchesTeam = bets.some(b=>{
     const t1=normalizeTeam(b.team_1||"").toLowerCase();
     const t2=normalizeTeam(b.team_2||"").toLowerCase();
-    return t1.includes(q)||t2.includes(q);
+    if(t1.includes(q)||t2.includes(q)) return true;
+    // Also check match_team_1/match_team_2 inside selections (for combinés)
+    return (b.selections||[]).some(s=>
+      normalizeTeam(s.match_team_1||"").toLowerCase().includes(q)||
+      normalizeTeam(s.match_team_2||"").toLowerCase().includes(q)||
+      normalizeTeam(s.team||"").toLowerCase().includes(q)
+    );
   });
   const matchesPlayer = bets.some(b=>(b.selections||[]).some(s=>(s.player||"").toLowerCase().includes(q)||(s.player_display||"").toLowerCase().includes(q)));
 
@@ -575,16 +581,26 @@ function getEntityStats(bets, query){
     matchedBets = bets.filter(b=>{
       const t1=normalizeTeam(b.team_1||"").toLowerCase();
       const t2=normalizeTeam(b.team_2||"").toLowerCase();
-      return t1.includes(q)||t2.includes(q);
+      if(t1.includes(q)||t2.includes(q)) return true;
+      // Also match via selections match_team_1/match_team_2 or team (for combinés with empty team_1)
+      return (b.selections||[]).some(s=>
+        normalizeTeam(s.match_team_1||"").toLowerCase().includes(q)||
+        normalizeTeam(s.match_team_2||"").toLowerCase().includes(q)||
+        (!s.player && normalizeTeam(s.team||"").toLowerCase().includes(q))
+      );
     });
     const allSelsMatched = getAllSelections(matchedBets);
     // Keep only selections where team matches AND no player (pure team selections)
     // Exclude joueur/player selections — those belong to player search only
     entitySels = allSelsMatched.filter(s=>
       !s.player && // no player tag
-      (s.team||"").toLowerCase().includes(q)
+      (
+        normalizeTeam(s.team||"").toLowerCase().includes(q)||
+        normalizeTeam(s.match_team_1||"").toLowerCase().includes(q)||
+        normalizeTeam(s.match_team_2||"").toLowerCase().includes(q)
+      )
     );
-    // If no team-tagged selections (old data), include all non-player sels
+    // Fallback: old data without team tags → all non-player sels
     if(entitySels.length===0){
       entitySels = allSelsMatched.filter(s=>!s.player);
     }
@@ -594,25 +610,52 @@ function getEntityStats(bets, query){
   return {bets:matchedBets, selStats, mode};
 }
 
-// MyMatch combo stats: pour paris simples avec 2+ sélections sur même match
+// MyMatch combo stats: paris simples ET combinés de MyMatch (groupés par match)
 function getMymatchCombos(bets){
-  const simpleBets = bets.filter(b=>(b.bet_structure==="simple"||b.bet_structure==="mymatch")&&(b.selections||[]).length>=2);
+  const TYPE_ORDER=["Résultat (1N2)","Over/Under","Over/Under MT","BTTS","Handicap","Écart de buts","1ère Équipe à Marquer","Clean Sheet","Score Exact","Score Exact MT","Qualification","Buteur/Passeur","Doublé / Triplé","Autre"];
   const comboCounts={};
-  simpleBets.forEach(bet=>{
-    const TYPE_ORDER=["Résultat (1N2)","Over/Under","Over/Under MT","BTTS","Handicap","Écart de buts","1ère Équipe à Marquer","Clean Sheet","Score Exact","Score Exact MT","Qualification","Buteur/Passeur","Doublé / Triplé","Autre"];
-    const rawTypes=[...new Set((bet.selections||[]).map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
-    // Sort by TYPE_ORDER for consistent readable label
-    const types=rawTypes.sort((a,b)=>{const ia=TYPE_ORDER.indexOf(a),ib=TYPE_ORDER.indexOf(b);return(ia===-1?99:ia)-(ib===-1?99:ib);});
-    if(types.length<2) return;
-    const key=types.join(" + ");
+
+  function addCombo(types, isWin){
+    const sorted=types.sort((a,b)=>{const ia=TYPE_ORDER.indexOf(a),ib=TYPE_ORDER.indexOf(b);return(ia===-1?99:ia)-(ib===-1?99:ib);});
+    if(sorted.length<2) return;
+    const key=sorted.join(" + ");
     if(!comboCounts[key]) comboCounts[key]={label:key,total:0,wins:0};
     comboCounts[key].total++;
-    if(bet.result==="win") comboCounts[key].wins++;
+    if(isWin) comboCounts[key].wins++;
+  }
+
+  bets.forEach(bet=>{
+    const sels=bet.selections||[];
+
+    // CAS 1 — Paris simple avec 2+ sélections sur même match (MyMatch classique)
+    if((bet.bet_structure==="simple"||bet.bet_structure==="mymatch")&&sels.length>=2){
+      const rawTypes=[...new Set(sels.map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
+      addCombo(rawTypes, bet.result==="win");
+    }
+
+    // CAS 2 — Combiné de MyMatch : sélections regroupées par match_team_1
+    if(bet.bet_structure==="combiné"&&sels.some(s=>s.match_team_1)){
+      const matchGroups={};
+      sels.forEach(s=>{
+        const key=s.match_team_1||(s.team||"__");
+        if(!matchGroups[key]) matchGroups[key]=[];
+        matchGroups[key].push(s);
+      });
+      // Chaque groupe de 2+ sélections = un MyMatch dans le combiné
+      Object.values(matchGroups).forEach(grpSels=>{
+        if(grpSels.length<2) return;
+        const rawTypes=[...new Set(grpSels.map(s=>normalizeSelType(s.sel_type||s.selection_type)))];
+        // Win = toutes les sélections du groupe gagnées (sel_result=win) ou pari global gagné
+        const grpWin=grpSels.every(s=>s.sel_result==="win")||(bet.result==="win"&&grpSels.every(s=>!s.sel_result));
+        addCombo(rawTypes, grpWin);
+      });
+    }
   });
+
   return Object.values(comboCounts)
     .map(c=>({...c,rate:c.total>0?c.wins/c.total*100:0}))
     .sort((a,b)=>b.total-a.total)
-    .slice(0,10);
+    .slice(0,12);
 }
 
 function getSelGroupStats(selections,keyFn){
@@ -2129,7 +2172,13 @@ function TeamPlayerSearch({ bets }) {
               <div key={bet.id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:'9px 11px',marginBottom:6,display:'flex',alignItems:'center',gap:9}}>
                 <div style={{width:22,height:22,borderRadius:'50%',background:bet.result==="win"?"rgba(87,255,158,0.15)":"rgba(255,87,112,0.12)",display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:bet.result==="win"?"var(--win)":"var(--loss)",flexShrink:0}}>{bet.result==="win"?"✓":"✕"}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text)'}}>{bet.team_1||"?"} vs {bet.team_2||"?"}</div>
+                  <div style={{fontFamily:'var(--font-head)',fontSize:12,fontWeight:700,color:'var(--text)'}}>
+                  {(()=>{
+                    const t1=bet.team_1||(bet.selections||[]).find(s=>s.match_team_1)?.match_team_1||"?";
+                    const t2=bet.team_2||(bet.selections||[]).find(s=>s.match_team_2)?.match_team_2||"?";
+                    return `${t1} vs ${t2}`;
+                  })()}
+                </div>
                   <div style={{fontSize:10,color:'var(--text3)'}}>{bet.date} · {displayStructure(bet)==="simple"?"Simple":"Combiné"} · ×{fmt(bet.total_odd)}</div>
                 </div>
                 <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:800,color:profit>=0?'var(--win)':'var(--loss)',flexShrink:0}}>{fmtEuro(profit)}</div>
