@@ -1978,46 +1978,30 @@ function DashboardTab({ bets }) {
 
         {allSels.length>0&&(
           <StatSection title="🎯 Par type de sélection">
-            <div className="card" style={{padding:0,overflow:'hidden'}}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th style={{textAlign:'center'}}>Sél.</th>
-                    <th style={{textAlign:'center'}}>Réussite</th>
-                    {comboSelRateByType.length>0&&<th style={{textAlign:'center',fontSize:9,color:'var(--accent2)'}}>Combinés</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {selTypeRows.map((r,i)=>{
-                    const comboRow=comboSelRateByType.find(c=>c.label===r.label);
-                    return(
-                      <tr key={i}>
-                        <td className="num">{r.label}</td>
-                        <td style={{textAlign:'center',color:'var(--text2)'}}>{r.total}</td>
-                        <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)'}}>{fmt(r.rate,0)}%</td>
-                        {comboSelRateByType.length>0&&<td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,fontSize:11,color:comboRow?(comboRow.rate>=50?'var(--win)':'var(--text2)'):'var(--text3)'}}>{comboRow&&comboRow.known>0?`${fmt(comboRow.rate,0)}%`:"—"}</td>}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <SelTable rows={selTypeRows} label="Type"/>
           </StatSection>
         )}
 
         {mymatchCombos.length>0&&(
-          <StatSection title="🔗 Combos Paris Simple (MyMatch)" defaultOpen={false}>
-            <div style={{fontSize:11,color:'var(--text2)',marginBottom:8,lineHeight:1.5}}>Combinaisons de critères sur un même match. Quels combos tu gagnes le plus ?</div>
+          <StatSection title="🔗 Mes combos MyMatch">
+            <div style={{fontSize:11,color:'var(--text2)',marginBottom:10,lineHeight:1.5}}>
+              Quelles combinaisons de critères tu joues le plus sur un même match (MyMatch simple ou MyMatch dans un combiné) — et lesquelles tu gagnes.
+            </div>
             <div className="card" style={{padding:0,overflow:'hidden'}}>
               <table className="data-table">
-                <thead><tr><th>Combinaison</th><th style={{textAlign:'center'}}>Paris</th><th style={{textAlign:'center'}}>Réussite</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Combo</th>
+                    <th style={{textAlign:'center'}}>Fois</th>
+                    <th style={{textAlign:'center'}}>Réussite</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {mymatchCombos.map((r,i)=>(
                     <tr key={i}>
-                      <td style={{fontSize:11,color:'var(--text)'}}>{r.label}</td>
-                      <td style={{textAlign:'center',color:'var(--text2)'}}>{r.total}</td>
-                      <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:700,color:r.rate>=50?'var(--win)':'var(--text2)'}}>{fmt(r.rate,0)}%</td>
+                      <td style={{fontSize:11,color:'var(--text)',fontWeight:600,lineHeight:1.4}}>{r.label}</td>
+                      <td style={{textAlign:'center',color:'var(--text2)',fontFamily:'var(--font-head)',fontWeight:700}}>{r.total}</td>
+                      <td style={{textAlign:'center',fontFamily:'var(--font-head)',fontWeight:800,fontSize:13,color:r.rate>=50?'var(--win)':'var(--loss)'}}>{fmt(r.rate,0)}%</td>
                     </tr>
                   ))}
                 </tbody>
