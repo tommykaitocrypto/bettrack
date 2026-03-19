@@ -762,10 +762,13 @@ Identifie LE PARI LE PLUS COMPLET : statut visible, au moins une sélection, mis
 Si tu vois "freebet", "pari gratuit", "free bet" : is_freebet = true
 
 ━━━ RÈGLE 4 — STRUCTURE ━━━
-MyMatch (critères cumulés sur UN seul match) → bet_structure="simple"
+MyMatch Winamax / Mybet Unibet (critères cumulés sur UN seul match) → bet_structure="simple"
 Combiné = paris sur PLUSIEURS matchs différents → bet_structure="combiné"
 Simple classique → bet_structure="simple"
 IMPORTANT: plus jamais "mymatch" comme valeur de bet_structure.
+
+━━━ RÈGLE 4b — BOOKMAKER ━━━
+Winamax, Betclic, Unibet → utilise le nom exact dans "bookmaker".
 
 ━━━ RÈGLE 5 — RÉSULTAT PAR SÉLECTION ━━━
 Pour chaque sélection d'un combiné, indique "sel_result":"win"|"loss"|null selon ce qui est visible.
@@ -808,6 +811,8 @@ Ex: "Plus de 2.5 buts" → sel_dir:"+", sel_threshold:2.5 | "Moins de 1.5 buts" 
   if(raw.team_2) raw.team_2=normalizeTeam(raw.team_2);
   if(raw.selections) raw.selections=raw.selections.map(s=>({...s,team:s.team?normalizeTeam(s.team):s.team}));
   // MyMatch: null out total_odd if it looks like a selection number
+  // Mybet (Unibet) = same as MyMatch → simple
+  if(raw.bet_structure==="mybet") raw.bet_structure="simple";
   if(raw.bet_structure==="mymatch"&&raw.total_odd&&(raw.total_odd===Math.round(raw.total_odd))&&raw.total_odd<20) raw.total_odd=null;
   if(raw.selections){
     raw.selections=raw.selections.map(sel=>{
@@ -862,6 +867,20 @@ async function analyzeMultipleScreenshots(files){
     used.add(i);merged.push(base);
   }
   return merged;
+}
+
+async function detectMatchForSel(teamName, date){
+  // Given an team name from a selection, find which match it belonged to and the competition
+  const r=await fetch(API_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    model:"claude-haiku-4-5-20251001",max_tokens:300,
+    tools:[{type:"web_search_20250305",name:"web_search"}],
+    system:`Tu identifies un match de football. Réponds UNIQUEMENT en JSON valide: {"team_1":"","team_2":"","competition":"","confidence":"high|medium|low"}`,
+    messages:[{role:"user",content:`L'équipe "${teamName}" a joué autour du ${date||"2025"}. Quel était son match et dans quelle compétition ? JSON uniquement.`}]
+  })});
+  const data=await r.json();
+  const textBlock=data.content?.filter(b=>b.type==="text").pop();
+  try{const result=extractJSON(textBlock?.text||"");if(result.competition)result.competition=normalizeCompetition(result.competition);if(result.team_1)result.team_1=normalizeTeam(result.team_1);if(result.team_2)result.team_2=normalizeTeam(result.team_2);return result;}
+  catch{return{team_1:"",team_2:"",competition:"",confidence:"low"};}
 }
 
 async function detectCompetition(team1,team2,date){
@@ -1304,7 +1323,7 @@ function ManualImportForm({ bets, addBet, existingTags, objectives, onDone, onCa
         <div className="card-title">Match</div>
         <div className="field-row">
           <div className="field-group"><div className="field-label">Sport</div><input className="field-input" value={d.sport} onChange={e=>upd("sport",e.target.value)} placeholder="Football"/></div>
-          <div className="field-group"><div className="field-label">Bookmaker</div><select className="field-input" value={d.bookmaker} onChange={e=>upd("bookmaker",e.target.value)}><option>Winamax</option><option>Betclic</option></select></div>
+          <div className="field-group"><div className="field-label">Bookmaker</div><select className="field-input" value={d.bookmaker} onChange={e=>upd("bookmaker",e.target.value)}><option>Winamax</option><option>Betclic</option><option>Unibet</option></select></div>
         </div>
         <div className="field-group"><div className="field-label">Compétition</div><input className="field-input" value={d.competition} onChange={e=>upd("competition",e.target.value)} placeholder="Ligue 1"/></div>
         <div className="field-row">
@@ -1494,7 +1513,7 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
           <div className="card-title">Infos match</div>
           <div className="field-row">
             <div className="field-group"><div className="field-label">Sport</div><input className="field-input" value={extracted.sport||""} onChange={e=>upd("sport",e.target.value)}/></div>
-            <div className="field-group"><div className="field-label">Bookmaker</div><select className="field-input" value={extracted.bookmaker||""} onChange={e=>upd("bookmaker",e.target.value)}><option>Winamax</option><option>Betclic</option></select></div>
+            <div className="field-group"><div className="field-label">Bookmaker</div><select className="field-input" value={extracted.bookmaker||""} onChange={e=>upd("bookmaker",e.target.value)}><option>Winamax</option><option>Betclic</option><option>Unibet</option></select></div>
           </div>
           <div className="field-group"><div className="field-label">Compétition</div><input className="field-input" value={extracted.competition||""} onChange={e=>upd("competition",normalizeCompetition(e.target.value))}/></div>
           <div className="field-row">
@@ -1566,10 +1585,52 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
                           <option value="loss">✗ Perdue</option>
                         </select>
                       )}
+                      {/* Match identification for this selection */}
+                      {!s.match_team_1&&(
+                        <button style={{background:'rgba(87,200,255,0.08)',border:'1px solid rgba(87,200,255,0.2)',borderRadius:5,fontSize:9,padding:'2px 6px',color:'var(--accent2)',fontFamily:'var(--font-head)',fontWeight:700,cursor:'pointer'}}
+                          onClick={async()=>{
+                            const sels=[...extracted.selections];
+                            sels[i]={...sels[i],_detectingMatch:true};upd("selections",sels);
+                            try{
+                              const res=await detectMatchForSel(s.team||s.player_display||"", extracted.date);
+                              const updated=[...extracted.selections];
+                              updated[i]={...updated[i],match_team_1:res.team_1||"",match_team_2:res.team_2||"",_matchComp:res.competition||"",_detectingMatch:false};
+                              upd("selections",updated);
+                            }catch{const u=[...extracted.selections];u[i]={...u[i],_detectingMatch:false};upd("selections",u);}
+                          }}>
+                          {s._detectingMatch?"...":"🔍 Match ?"}
+                        </button>
+                      )}
+                      {s.match_team_1&&(
+                        <span style={{fontSize:9,color:'var(--accent2)',background:'rgba(87,200,255,0.08)',border:'1px solid rgba(87,200,255,0.2)',borderRadius:4,padding:'2px 5px',display:'flex',alignItems:'center',gap:3}}>
+                          ⚽ {s.match_team_1} vs {s.match_team_2}
+                          <span style={{cursor:'pointer',color:'var(--text3)'}} onClick={()=>{const sels=[...extracted.selections];sels[i]={...sels[i],match_team_1:"",match_team_2:"",_showMatchEdit:false};upd("selections",sels);}}>✕</span>
+                          <span style={{cursor:'pointer',color:'var(--text3)',marginLeft:1}} onClick={()=>{const sels=[...extracted.selections];sels[i]={...sels[i],_showMatchEdit:!s._showMatchEdit};upd("selections",sels);}}>✎</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                   {showOdd&&<div className="selection-odd">×{fmt(s.odd)}</div>}
                 </div>
+                {/* Manual match edit fields */}
+                {s._showMatchEdit&&s.match_team_1!==undefined&&(
+                  <div style={{marginTop:7,padding:'8px',background:'var(--surface2)',borderRadius:7,display:'flex',flexDirection:'column',gap:5}}>
+                    <div style={{fontSize:9,color:'var(--text3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.4px'}}>Corriger le match</div>
+                    <div style={{display:'flex',gap:5}}>
+                      <input style={{flex:1,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none'}}
+                        value={s.match_team_1||""} placeholder="Équipe 1"
+                        onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],match_team_1:e.target.value};upd("selections",sels);}}/>
+                      <span style={{fontSize:10,color:'var(--text3)',alignSelf:'center'}}>vs</span>
+                      <input style={{flex:1,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none'}}
+                        value={s.match_team_2||""} placeholder="Équipe 2"
+                        onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],match_team_2:e.target.value};upd("selections",sels);}}/>
+                    </div>
+                    <input style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none',width:'100%'}}
+                      value={s._matchComp||""} placeholder="Compétition"
+                      onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],_matchComp:e.target.value};upd("selections",sels);}}/>
+                    <button onClick={()=>{const sels=[...extracted.selections];sels[i]={...sels[i],_showMatchEdit:false};upd("selections",sels);}} style={{alignSelf:'flex-end',padding:'3px 10px',background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:5,fontSize:10,fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer'}}>✓ OK</button>
+                  </div>
+                )}
               );
             })}
           </div>
@@ -1969,6 +2030,150 @@ function SelTable({ rows, label }) {
   );
 }
 
+
+// ─── CALENDAR VIEW ────────────────────────────────────────────────────────────
+function CalendarView({ bets }) {
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth()); // 0-indexed
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [showDayModal, setShowDayModal] = useState(false);
+
+  const MONTHS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const DAYS_FR = ["L","M","M","J","V","S","D"];
+
+  // Build day profit map for current month
+  const dayMap = {};
+  bets.forEach(b => {
+    if(!b.date) return;
+    const d = new Date(b.date);
+    if(d.getFullYear()===year && d.getMonth()===month){
+      const key = d.getDate();
+      if(!dayMap[key]) dayMap[key] = {profit:0, count:0, bets:[]};
+      dayMap[key].profit += betProfit(b);
+      dayMap[key].count++;
+      dayMap[key].bets.push(b);
+    }
+  });
+
+  // Month stats
+  const monthProfit = Object.values(dayMap).reduce((a,d)=>a+d.profit, 0);
+  const monthCount  = Object.values(dayMap).reduce((a,d)=>a+d.count, 0);
+
+  // Calendar grid
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  // Convert Sun=0 to Mon=0
+  const startOffset = (firstDay===0?6:firstDay-1);
+
+  const prevMonth = () => { if(month===0){setYear(y=>y-1);setMonth(11);}else setMonth(m=>m-1); setSelectedDay(null); };
+  const nextMonth = () => { if(month===11){setYear(y=>y+1);setMonth(0);}else setMonth(m=>m+1); setSelectedDay(null); };
+  const goToday   = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelectedDay(today.getDate()); };
+
+  const isToday = (d) => d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear();
+
+  const selectedBets = selectedDay ? (dayMap[selectedDay]?.bets||[]) : [];
+
+  return(
+    <div>
+      {/* Header nav */}
+      <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}>
+        <button onClick={prevMonth} style={{width:32,height:32,borderRadius:8,background:'var(--surface2)',border:'1px solid var(--border)',color:'var(--text)',cursor:'pointer',fontSize:16,fontFamily:'var(--font-head)',fontWeight:700,flexShrink:0}}>‹</button>
+        <div style={{flex:1,textAlign:'center',fontFamily:'var(--font-head)',fontSize:14,fontWeight:800,color:'var(--text)'}}>{MONTHS_FR[month]} {year}</div>
+        <button onClick={nextMonth} style={{width:32,height:32,borderRadius:8,background:'var(--surface2)',border:'1px solid var(--border)',color:'var(--text)',cursor:'pointer',fontSize:16,fontFamily:'var(--font-head)',fontWeight:700,flexShrink:0}}>›</button>
+        <button onClick={goToday} style={{padding:'5px 10px',borderRadius:8,background:'var(--surface2)',border:'1px solid var(--border)',color:'var(--text2)',cursor:'pointer',fontSize:11,fontFamily:'var(--font-head)',fontWeight:700,flexShrink:0}}>Aujourd'hui</button>
+      </div>
+
+      {/* Day headers */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:3}}>
+        {DAYS_FR.map((d,i)=>(
+          <div key={i} style={{textAlign:'center',fontSize:10,color:'var(--text3)',fontFamily:'var(--font-head)',fontWeight:700,padding:'2px 0'}}>{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
+        {/* Empty cells before first day */}
+        {Array.from({length:startOffset}).map((_,i)=>(
+          <div key={`e${i}`} style={{aspectRatio:'1',borderRadius:8}}/>
+        ))}
+        {/* Day cells */}
+        {Array.from({length:daysInMonth}).map((_,i)=>{
+          const day=i+1;
+          const data=dayMap[day];
+          const profit=data?.profit||0;
+          const hasBets=!!data;
+          const isTod=isToday(day);
+          const isSel=selectedDay===day;
+          const color=profit>=0?'var(--win)':'var(--loss)';
+          const bg=hasBets?(profit>=0?'rgba(87,255,158,0.1)':'rgba(255,87,112,0.1)'):'transparent';
+          const border=isSel?`2px solid var(--accent)`:isTod?'2px solid rgba(200,255,87,0.4)':'1px solid var(--border)';
+          return(
+            <div key={day}
+              onClick={()=>{if(hasBets){setSelectedDay(day);setShowDayModal(true);}}}
+              style={{aspectRatio:'1',borderRadius:8,background:bg,border,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:1,cursor:hasBets?'pointer':'default',transition:'all 0.15s'}}>
+              <div style={{fontSize:11,fontFamily:'var(--font-head)',fontWeight:isTod?800:600,color:isTod?'var(--accent)':'var(--text)'}}>{day}</div>
+              {hasBets&&<div style={{fontSize:9,fontFamily:'var(--font-head)',fontWeight:700,color,lineHeight:1}}>{profit>=0?'+':''}{Math.round(profit)}€</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Month summary */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginTop:10}}>
+        <div style={{background:'var(--surface2)',borderRadius:10,padding:'9px 12px'}}>
+          <div style={{fontSize:10,color:'var(--text3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.4px',marginBottom:3}}>Bénéfice du mois</div>
+          <div style={{fontFamily:'var(--font-head)',fontSize:18,fontWeight:800,color:monthProfit>=0?'var(--win)':'var(--loss)'}}>{fmtEuro(monthProfit)}</div>
+        </div>
+        <div style={{background:'var(--surface2)',borderRadius:10,padding:'9px 12px'}}>
+          <div style={{fontSize:10,color:'var(--text3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.4px',marginBottom:3}}>Paris du mois</div>
+          <div style={{fontFamily:'var(--font-head)',fontSize:18,fontWeight:800,color:'var(--accent2)'}}>{monthCount}</div>
+        </div>
+      </div>
+
+      {/* Day Modal */}
+      {showDayModal&&selectedDay&&(
+        <div className="modal-backdrop" onClick={()=>setShowDayModal(false)}>
+          <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+            <div className="modal-handle"/>
+            <button className="modal-close" onClick={()=>setShowDayModal(false)}>✕</button>
+            <div className="modal-header">
+              <div className="modal-title">{selectedDay} {MONTHS_FR[month]} {year}</div>
+              <div className="modal-sub">{selectedBets.length} pari{selectedBets.length>1?"s":""} · {(()=>{const p=selectedBets.reduce((a,b)=>a+betProfit(b),0);return<span style={{color:p>=0?'var(--win)':'var(--loss)',fontFamily:'var(--font-head)',fontWeight:800}}>{fmtEuro(p)}</span>;})()}</div>
+            </div>
+            <div className="modal-body">
+              {selectedBets.map((bet,i)=>{
+                const profit=betProfit(bet);
+                return(
+                  <div key={i} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:'11px 13px',marginBottom:8}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:5}}>
+                      <div style={{width:22,height:22,borderRadius:'50%',background:bet.result==="win"?"rgba(87,255,158,0.15)":"rgba(255,87,112,0.12)",display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:bet.result==="win"?"var(--win)":"var(--loss)",flexShrink:0}}>{bet.result==="win"?"✓":"✕"}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:'var(--font-head)',fontSize:13,fontWeight:700,color:'var(--text)'}}>{bet.team_1||"?"} vs {bet.team_2||"?"}</div>
+                        <div style={{fontSize:10,color:'var(--text3)'}}>{displayStructure(bet)==="simple"?"Simple":"Combiné"} · ×{fmt(bet.total_odd)} · {bet.bookmaker}</div>
+                      </div>
+                      <div style={{fontFamily:'var(--font-head)',fontSize:14,fontWeight:800,color:profit>=0?'var(--win)':'var(--loss)',flexShrink:0}}>{fmtEuro(profit)}</div>
+                    </div>
+                    {bet.selections?.length>0&&(
+                      <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:4}}>
+                        {bet.selections.map((s,j)=>(
+                          <span key={j} style={{fontSize:9,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:4,padding:'2px 6px',color:'var(--text2)',fontFamily:'var(--font-head)',fontWeight:600}}>
+                            {s.team||s.player_display||"—"} · {normalizeSelType(s.sel_type||s.selection_type)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── DASHBOARD TAB ────────────────────────────────────────────────────────────
 function DashboardTab({ bets, username }) {
   const [pView, setPView] = useState("top");
@@ -2014,8 +2219,8 @@ function DashboardTab({ bets, username }) {
       <div className="card" style={{padding:'12px 12px 9px'}}><BankrollChart bets={bets}/></div>
 
       <div style={{marginTop:10}}>
-        <StatSection title="📊 Performance par mois">
-          <div className="card" style={{padding:'12px 12px 9px'}}><MonthlyBarChart bets={bets}/></div>
+        <StatSection title="📅 Calendrier des bénéfices" defaultOpen={true}>
+          <CalendarView bets={bets}/>
         </StatSection>
 
         <StatSection title="🏷️ Par catégorie">
