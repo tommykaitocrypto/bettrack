@@ -1551,8 +1551,7 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
               const showOdd=s.odd&&s.odd>1;
               const selType=normalizeSelType(s.sel_type||s.selection_type)||"autre";
               const showThreshold=selType==="nb buts"||selType==="nb buts MT"||selType==="handicap";
-              return(
-                <div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
+              const mainBlock = <><div key={i} className="selection-item" style={isNeg?{borderColor:'rgba(255,153,87,0.3)'}:{}}>
                   <div className="selection-left">
                     <div className="selection-team">{s.team}{(s.player_display||s.player)?` · ${s.player_display||s.player}`:""}</div>
                     <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2,flexWrap:'wrap'}}>
@@ -1612,26 +1611,26 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
                   </div>
                   {showOdd&&<div className="selection-odd">×{fmt(s.odd)}</div>}
                 </div>
-                {/* Manual match edit fields */}
-                {s._showMatchEdit&&s.match_team_1!==undefined&&(
-                  <div style={{marginTop:7,padding:'8px',background:'var(--surface2)',borderRadius:7,display:'flex',flexDirection:'column',gap:5}}>
-                    <div style={{fontSize:9,color:'var(--text3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.4px'}}>Corriger le match</div>
-                    <div style={{display:'flex',gap:5}}>
-                      <input style={{flex:1,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none'}}
-                        value={s.match_team_1||""} placeholder="Équipe 1"
-                        onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],match_team_1:e.target.value};upd("selections",sels);}}/>
-                      <span style={{fontSize:10,color:'var(--text3)',alignSelf:'center'}}>vs</span>
-                      <input style={{flex:1,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none'}}
-                        value={s.match_team_2||""} placeholder="Équipe 2"
-                        onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],match_team_2:e.target.value};upd("selections",sels);}}/>
-                    </div>
-                    <input style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none',width:'100%'}}
-                      value={s._matchComp||""} placeholder="Compétition"
-                      onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],_matchComp:e.target.value};upd("selections",sels);}}/>
-                    <button onClick={()=>{const sels=[...extracted.selections];sels[i]={...sels[i],_showMatchEdit:false};upd("selections",sels);}} style={{alignSelf:'flex-end',padding:'3px 10px',background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:5,fontSize:10,fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer'}}>✓ OK</button>
+              </>;
+              const editBlock = s._showMatchEdit&&s.match_team_1!==undefined&&(
+                <div style={{marginTop:7,padding:'8px',background:'var(--surface2)',borderRadius:7,display:'flex',flexDirection:'column',gap:5}}>
+                  <div style={{fontSize:9,color:'var(--text3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.4px'}}>Corriger le match</div>
+                  <div style={{display:'flex',gap:5}}>
+                    <input style={{flex:1,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none'}}
+                      value={s.match_team_1||""} placeholder="Équipe 1"
+                      onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],match_team_1:e.target.value};upd("selections",sels);}}/>
+                    <span style={{fontSize:10,color:'var(--text3)',alignSelf:'center'}}>vs</span>
+                    <input style={{flex:1,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none'}}
+                      value={s.match_team_2||""} placeholder="Équipe 2"
+                      onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],match_team_2:e.target.value};upd("selections",sels);}}/>
                   </div>
-                )}
+                  <input style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:5,fontSize:11,padding:'4px 7px',color:'var(--text)',fontFamily:'var(--font-head)',outline:'none',width:'100%'}}
+                    value={s._matchComp||""} placeholder="Compétition"
+                    onChange={e=>{const sels=[...extracted.selections];sels[i]={...sels[i],_matchComp:e.target.value};upd("selections",sels);}}/>
+                  <button onClick={()=>{const sels=[...extracted.selections];sels[i]={...sels[i],_showMatchEdit:false};upd("selections",sels);}} style={{alignSelf:'flex-end',padding:'3px 10px',background:'var(--accent)',color:'#0a0a0f',border:'none',borderRadius:5,fontSize:10,fontFamily:'var(--font-head)',fontWeight:800,cursor:'pointer'}}>✓ OK</button>
+                </div>
               );
+              return <div key={i}>{mainBlock}{editBlock}</div>;
             })}
           </div>
         )}
