@@ -718,7 +718,8 @@ function groupSelsByMatch(bet) {
       ? `${sel.match_team_1}|${sel.match_team_2}`
       : sel.team||"__unknown__";
     let group = groups.find(g => g.key === matchKey || g.sels.some(s => s.team === sel.team));
-    if (!group) { group = { key: matchKey, team_1: sel.match_team_1||sel.team||"", team_2: sel.match_team_2||"", sels: [] }; groups.push(group); }
+    if (!group) { group = { key: matchKey, team_1: sel.match_team_1||sel.team||"", team_2: sel.match_team_2||"", comp: normalizeCompetition(sel.match_comp||""), sels: [] }; groups.push(group); }
+    else if(!group.comp&&sel.match_comp) group.comp=normalizeCompetition(sel.match_comp);
     group.sels.push(sel);
   });
   return groups.length > 1 ? groups : null;
@@ -783,13 +784,15 @@ BUTEURS MULTI-CHANCES : "Buteur Ruiz OU Hakimi OU Kvaratskhelia" → UNE SEULE s
   player_display = "F.Ruiz / A.Hakimi / K.Kvaratskhelia", player = "F.Ruiz / A.Hakimi / K.Kvaratskhelia", sel_type = "joueur décisif"
   NE PAS créer une sélection par joueur.
 
-━━━ RÈGLE 8 — ÉQUIPE PAR SÉLECTION ━━━
+━━━ RÈGLE 8 — ÉQUIPE ET MATCH PAR SÉLECTION ━━━
 Pour chaque sélection, "team" = l'équipe concernée par ce critère.
 Ex: "Victoire PSG"→team:"PSG" ; "Mbappé buteur"→team:"",player:"K.Mbappé"
-Pour les COMBINÉS : ajoute aussi "match_team_1" et "match_team_2" = les deux équipes DU MATCH de cette sélection.
-Ex: sélection "Victoire PSG" dans PSG-Aston Villa → match_team_1:"PSG", match_team_2:"Aston Villa"
-Ex: sélection "Raphinha buteur" dans Barcelone-Dortmund → match_team_1:"Barcelone", match_team_2:"Dortmund"
-Cela permet d'identifier quel match correspond à quelle sélection dans un combiné.
+Pour les COMBINÉS : ajoute aussi :
+- "match_team_1" et "match_team_2" = les deux équipes DU MATCH de cette sélection
+- "match_comp" = la compétition de CE match (ex: "La Liga", "Ligue 1", "Champions League")
+Ex: sélection "Victoire Atletico" dans Atletico-Osasuna (La Liga) → match_team_1:"Atletico", match_team_2:"Osasuna", match_comp:"La Liga"
+Ex: sélection "Mbappé buteur" dans Real Madrid-Barcelone (La Liga) → match_team_1:"Real Madrid", match_team_2:"Barcelone", match_comp:"La Liga"
+Cela permet d'identifier quel match et quelle compétition correspond à chaque sélection.
 
 ━━━ RÈGLE 9 — TYPE DE SÉLECTION ━━━
 sel_type parmi: "résultat"|"nb buts"|"nb buts MT"|"score exact"|"score exact MT"|"joueur décisif"|"doublé/triplé"|"handicap"|"qualification"|"écart buts"|"1ère équipe à marquer"|"les 2 marquent"|"clean sheet"|"autre"
@@ -800,7 +803,7 @@ Pour sel_type "nb buts", "nb buts MT", "handicap" : ajoute sel_dir:"+" ou "-" et
 Ex: "Plus de 2.5 buts" → sel_dir:"+", sel_threshold:2.5 | "Moins de 1.5 buts" → sel_dir:"-", sel_threshold:1.5 | "PSG -1.5" → sel_dir:"-", sel_threshold:1.5
 
 ━━━ FORMAT JSON ━━━
-{"bet_ref":"","sport":"Football","bookmaker":"Winamax","competition":"","date":"YYYY-MM-DD","heure":"HH:MM","team_1":"","team_2":"","bet_structure":"simple|combiné","bet_category":"team|player|goals|combo","total_odd":1.5,"stake":10.0,"actual_win":0.0,"result":"win|loss","is_freebet":false,"selections":[{"team":"PSG","player":"","player_display":"","selection_type":"Victoire PSG","sel_type":"Résultat (1N2)","sel_dir":null,"sel_threshold":null,"sel_result":null,"match_team_1":"PSG","match_team_2":"Aston Villa","odd":1.38,"negated":false}]}`,
+{"bet_ref":"","sport":"Football","bookmaker":"Winamax","competition":"","date":"YYYY-MM-DD","heure":"HH:MM","team_1":"","team_2":"","bet_structure":"simple|combiné","bet_category":"team|player|goals|combo","total_odd":1.5,"stake":10.0,"actual_win":0.0,"result":"win|loss","is_freebet":false,"selections":[{"team":"PSG","player":"","player_display":"","selection_type":"Victoire PSG","sel_type":"Résultat (1N2)","sel_dir":null,"sel_threshold":null,"sel_result":null,"match_team_1":"PSG","match_team_2":"Aston Villa","match_comp":"Champions League","odd":1.38,"negated":false}]}`,
     messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mimeType,data:base64}},{type:"text",text:"Extrais le pari le plus complet visible sur cette image."}]}]
   })});
   const data=await r.json();
@@ -817,6 +820,9 @@ Ex: "Plus de 2.5 buts" → sel_dir:"+", sel_threshold:2.5 | "Moins de 1.5 buts" 
   if(raw.selections){
     raw.selections=raw.selections.map(sel=>{
       if(sel.player&&!sel.player.match(/^[A-Za-zÀ-ÿ]\./)){sel.player_display=sel.player_display||sel.player;sel.player=normalizePlayerName(sel.player);}
+      if(sel.match_comp) sel.match_comp=normalizeCompetition(sel.match_comp);
+      if(sel.match_team_1) sel.match_team_1=normalizeTeam(sel.match_team_1);
+      if(sel.match_team_2) sel.match_team_2=normalizeTeam(sel.match_team_2);
       if(sel.negated&&!sel.selection_type?.includes("— Non")) sel.selection_type=(sel.selection_type||"")+" — Non";
       if(!sel.sel_type) sel.sel_type=normalizeSelType(sel.selection_type);
       // Auto-extract sel_dir + sel_threshold from selection_type if not set by IA
@@ -1186,6 +1192,7 @@ function BetDetailModal({ bet, onClose, onDelete, onUpdate, allTags, objectives 
                         <div style={{fontSize:10,color:'var(--accent2)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:5,display:'flex',alignItems:'center',gap:5}}>
                           <span style={{background:'rgba(87,200,255,0.12)',border:'1px solid rgba(87,200,255,0.2)',borderRadius:5,padding:'1px 7px'}}>Match {gi+1}</span>
                           <span style={{color:'var(--text2)',fontWeight:600,textTransform:'none',letterSpacing:0}}>{matchLabel}</span>
+                          {grp.comp&&<span style={{fontSize:9,color:'var(--text3)',background:'var(--surface2)',borderRadius:4,padding:'1px 6px',fontWeight:600}}>{grp.comp}</span>}
                         </div>
                         {grp.sels.map((s,i)=>{
                           const isNeg=s.negated||s.selection_type?.includes("— Non");
@@ -1602,7 +1609,7 @@ function UploadTab({ setBets, addBet, bets, updateBet, objectives }) {
                       )}
                       {s.match_team_1&&(
                         <span style={{fontSize:9,color:'var(--accent2)',background:'rgba(87,200,255,0.08)',border:'1px solid rgba(87,200,255,0.2)',borderRadius:4,padding:'2px 5px',display:'flex',alignItems:'center',gap:3}}>
-                          ⚽ {s.match_team_1} vs {s.match_team_2}
+                          ⚽ {s.match_team_1} vs {s.match_team_2}{s._matchComp?` · ${s._matchComp}`:""}
                           <span style={{cursor:'pointer',color:'var(--text3)'}} onClick={()=>{const sels=[...extracted.selections];sels[i]={...sels[i],match_team_1:"",match_team_2:"",_showMatchEdit:false};upd("selections",sels);}}>✕</span>
                           <span style={{cursor:'pointer',color:'var(--text3)',marginLeft:1}} onClick={()=>{const sels=[...extracted.selections];sels[i]={...sels[i],_showMatchEdit:!s._showMatchEdit};upd("selections",sels);}}>✎</span>
                         </span>
@@ -2191,9 +2198,35 @@ function DashboardTab({ bets, username }) {
   const comboSelResults=comboSels.filter(s=>s.sel_result!=null);
   const comboSelRateByType=comboSelResults.length>0?getSelGroupStatsIndividual(comboSelResults,s=>s._selType):[];
   const mymatchCombos=getMymatchCombos(bets);
-  // Competition: normalize and group properly
-  const normalizedSels=allSels.map(sel=>({...sel,_competition:normalizeCompetition(sel._competition||"")||normalizeCompetition(sel._bet?.competition||"")||""}));
-  const compRows=getSelGroupStats(normalizedSels.filter(s=>s._competition),s=>s._competition).slice(0,12);
+  // Competition: use match_comp (per-selection) first, then bet.competition as fallback
+  const normalizedSels=allSels.map(sel=>{
+    const comp = normalizeCompetition(sel.match_comp||"")
+      || normalizeCompetition(sel._competition||"")
+      || normalizeCompetition(sel._bet?.competition||"")
+      || "";
+    return {...sel,_competition:comp};
+  });
+  // Build bet-level competition stats: each bet counted once per unique competition it covers
+  const compBetMap={};
+  bets.forEach(bet=>{
+    const compsInBet=new Set();
+    // From selections match_comp
+    (bet.selections||[]).forEach(sel=>{
+      const c=normalizeCompetition(sel.match_comp||"");
+      if(c) compsInBet.add(c);
+    });
+    // Fallback: bet.competition
+    if(compsInBet.size===0&&bet.competition) compsInBet.add(normalizeCompetition(bet.competition));
+    compsInBet.forEach(c=>{
+      if(!compBetMap[c]) compBetMap[c]={label:c,_betIds:new Set()};
+      compBetMap[c]._betIds.add(bet.id);
+    });
+  });
+  const compRows=Object.values(compBetMap).map(({label,_betIds})=>{
+    const sub=bets.filter(b=>_betIds.has(b.id));
+    const st=computeStats(sub);
+    return{label,total:_betIds.size,wins:st.wins,rate:st.rate};
+  }).sort((a,b)=>b.total-a.total).slice(0,12);
   const oddRanges=getOddRangeStats(bets);
   const streaks=getStreaks(bets);
   const players=getPlayerStats(bets);
